@@ -1,5 +1,4 @@
-#website Partie API du site
----------------------------
+# website Partie API du site
 
 ### Liens API
 
