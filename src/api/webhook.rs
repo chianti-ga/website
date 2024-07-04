@@ -1,31 +1,44 @@
 use actix_web::{get, HttpResponse, Responder};
 use actix_web::web::Query;
 use serde::Deserialize;
-use serenity::all::{ExecuteWebhook, Http, Webhook};
+use serenity::all::{Embed, ExecuteWebhook, Http, Webhook};
+
+use crate::CONFIG;
+use crate::config_utils::TextWebhookEntry;
 
 #[derive(Deserialize)]
 pub struct WebhookQuery {
-    //token:String,
-    webhook_id: String,
-    webhook_token: String,
-    webhook_name: String,
-    content: String,
+    webhook: String,
+    content: String
+}
+pub struct EmbedWebhookData {
+    embed: Embed,
 }
 
-//TODO: auth
-#[get("/api/sendDiscordWebhook")]
-pub async fn send_discord_webhook(req: Query<WebhookQuery>) -> impl Responder {
-    let http = Http::new("");
-    let url = format!("https://discord.com/api/webhooks/{}/{}", req.webhook_id, req.webhook_token);
-
-    let webhook = match Webhook::from_url(&http, url.as_str()).await {
-        Ok(webhook) => webhook,
-        Err(err) => return HttpResponse::InternalServerError().body(format!("Error resolving webhook: {}", err)),
+#[get("/api/discord/text_webhook/")]
+pub async fn text_webhook(req: Query<WebhookQuery>) -> impl Responder {
+    let choosed_webhook: &TextWebhookEntry = match CONFIG.text_webhooks.iter().filter(|x| x.webhook.to_lowercase() == req.webhook).next() {
+        Some(webhook_entry) => webhook_entry,
+        None => return HttpResponse::InternalServerError().body("webhook not found")
     };
 
-    let builder = ExecuteWebhook::new().content(req.content.as_str()).username(req.webhook_name.as_str());
+    let http = Http::new("");
+    let webhook = match Webhook::from_url(&http, choosed_webhook.url.as_str()).await {
+        Ok(webhook) => webhook,
+        Err(err) => return HttpResponse::InternalServerError().body(format!("Error building webhook: {}", err)),
+    };
+
+    let builder = ExecuteWebhook::new().content(req.content.as_str()).username(choosed_webhook.name.as_str());
     match webhook.execute(&http, false, builder).await {
         Ok(_) => HttpResponse::Ok().body("status:sent"),
         Err(err) => HttpResponse::InternalServerError().body(format!("Error executing webhook: {}", err)),
     }
 }
+
+/*async fn send_text_webhook(webhook: Webhook, webhook_data: WebhookData) -> HttpResponse {
+    let builder = ExecuteWebhook::new().content(webhook_data.content.as_str()).username(webhook_data.webhook_name.as_str());
+    match webhook.execute(&Http::new(""), false, builder).await {
+        Ok(_) => HttpResponse::Ok().body("Ok"),
+        Err(err) => HttpResponse::InternalServerError().body(format!("Error executing webhook: {}", err)),
+    }
+}*/

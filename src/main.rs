@@ -1,30 +1,32 @@
 use actix_web::{App, get, HttpResponse, HttpServer, Responder};
+use actix_web::middleware::Logger;
 use anyhow::Result;
+use config::{Config, File};
+use env_logger::Env;
 // Import the Result type from the anyhow crate
-use config::Config;
+use lazy_static::lazy_static;
 
-use crate::api::webhook::send_discord_webhook;
+use crate::api::webhook::text_webhook;
+use crate::config_utils::Configuration;
 
 mod api;
+mod config_utils;
+
+
+lazy_static! {
+     pub static ref CONFIG: Configuration = Config::builder().add_source(File::with_name("config.json")).build().expect("[ERROR] config.json not found or invalid.").try_deserialize::<Configuration>().unwrap();
+}
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    #[cfg(feature = "capture-spantrace")]
-    install_tracing()?;
-
-    color_eyre::install().unwrap(); // color backtracking
-
-    let config = Config::builder()
-        .add_source(config::File::with_name("config.json"))
-        .build()
-        .map_err(anyhow::Error::msg)?;
-
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
     HttpServer::new(|| {
         App::new()
+            .wrap(Logger::default())
             .service(hello)
-            .service(send_discord_webhook)
+            .service(text_webhook)
     })
-        .bind(("127.0.0.1", config.get("port").unwrap()))
+        .bind(("127.0.0.1", CONFIG.port))
         .map_err(anyhow::Error::msg)?
         .run()
         .await?;
@@ -32,28 +34,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-#[cfg(feature = "capture-spantrace")]
-fn install_tracing() -> Result<()> {
-    use tracing_error::ErrorLayer;
-    use tracing_subscriber::prelude::*;
-    use tracing_subscriber::{EnvFilter, fmt};
-
-    let fmt_layer = fmt::layer().with_target(false);
-    let filter_layer = EnvFilter::try_from_default_env()
-        .or_else(|_| EnvFilter::try_new("info"))
-        .unwrap();
-
-    tracing_subscriber::registry()
-        .with(filter_layer)
-        .with(fmt_layer)
-        .with(ErrorLayer::default())
-        .try_init()
-        .map_err(anyhow::Error::msg)?;
-
-    Ok(())
-}
-
 #[get("/")]
 async fn hello() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
+    HttpResponse::Ok().body(include_str!("ress/frontpage.html"))
 }

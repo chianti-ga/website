@@ -1,3 +1,10 @@
 {
-  "port": 8080
+  "port": 8080,
+  "text_webhooks": [
+    {
+      "webhook": "test",
+      "url": "https://discord.com/api/webhooks/1258225458944806964/Ve4c5b9kZpn-vSeXOLjtQb8rcm0fzDyb3tRIVxgvQ-s90P3ZhAE8VgZKH-GiLQG1-OrS",
+      "name": "RUST TEST"
+    }
+  ]
 }
