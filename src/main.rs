@@ -3,10 +3,9 @@ use actix_web::middleware::Logger;
 use anyhow::Result;
 use config::{Config, File};
 use env_logger::Env;
-// Import the Result type from the anyhow crate
 use lazy_static::lazy_static;
 
-use crate::api::webhook::text_webhook;
+use crate::api::webhook::{embed_webhook, text_webhook};
 use crate::config_utils::Configuration;
 
 mod api;
@@ -25,6 +24,7 @@ async fn main() -> Result<()> {
             .wrap(Logger::default())
             .service(hello)
             .service(text_webhook)
+            .service(embed_webhook)
     })
         .bind(("127.0.0.1", CONFIG.port))
         .map_err(anyhow::Error::msg)?
