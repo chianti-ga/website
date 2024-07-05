@@ -4,11 +4,11 @@ use serde::Deserialize;
 #[derive(Clone)]
 pub struct Configuration {
     pub port: u16,
-    pub text_webhooks: Vec<TextWebhookEntry>,
+    pub webhooks_list: Vec<WebhookEntry>,
 }
 #[derive(Deserialize)]
 #[derive(Clone)]
-pub struct TextWebhookEntry {
+pub struct WebhookEntry {
     pub webhook: String,
     pub url: String,
     pub name: String,
