@@ -4,7 +4,7 @@ use serde::Deserialize;
 use serenity::all::{Colour, CreateEmbed, ExecuteWebhook, Http, Webhook};
 
 use crate::CONFIG;
-use crate::config_utils::WebhookEntry;
+use crate::utils::config_utils::WebhookEntry;
 
 #[derive(Deserialize)]
 pub struct WebhookForm {
@@ -30,18 +30,19 @@ pub struct EmbedWebhookForm {
 
 #[get("/api/discord/text_webhook/")]
 pub async fn text_webhook(form: Form<WebhookForm>) -> impl Responder {
-    let choosed_webhook: &WebhookEntry = match CONFIG.webhooks_list.iter().filter(|x| x.webhook.to_lowercase() == form.webhook).next() {
-        Some(webhook_entry) => webhook_entry,
-        None => return HttpResponse::InternalServerError().body("webhook not found")
+    let chosen_webhook_entry: &WebhookEntry = match retrieved_webhook(&form.webhook) {
+        Some(webhook) => webhook,
+        None => return HttpResponse::BadRequest().body("webhook not found")
     };
 
     let http = Http::new("");
-    let webhook = match Webhook::from_url(&http, choosed_webhook.url.as_str()).await {
+
+    let webhook = match Webhook::from_url(&http, chosen_webhook_entry.url.as_str()).await {
         Ok(webhook) => webhook,
         Err(err) => return HttpResponse::InternalServerError().body(format!("Error building webhook: {}", err)),
     };
 
-    let builder = ExecuteWebhook::new().content(form.content.as_str()).username(choosed_webhook.name.as_str());
+    let builder = ExecuteWebhook::new().content(form.content.as_str()).username(chosen_webhook_entry.name.as_str());
     match webhook.execute(&http, false, builder).await {
         Ok(_) => HttpResponse::Ok().body("status:sent"),
         Err(err) => HttpResponse::InternalServerError().body(format!("Error executing webhook: {}", err)),
@@ -50,8 +51,8 @@ pub async fn text_webhook(form: Form<WebhookForm>) -> impl Responder {
 //FIXME: Usable but not finished
 #[post("/api/discord/embed_webhook/")]
 pub async fn embed_webhook(form: Form<EmbedWebhookForm>) -> HttpResponse {
-    let choosed_webhook: &WebhookEntry = match CONFIG.webhooks_list.iter().filter(|x| x.webhook.to_lowercase() == form.webhook).next() {
-        Some(webhook_entry) => webhook_entry,
+    let chosen_webhook_entry: &WebhookEntry = match retrieved_webhook(&form.webhook) {
+        Some(webhook) => webhook,
         None => return HttpResponse::BadRequest().body("webhook not found")
     };
 
@@ -61,28 +62,32 @@ pub async fn embed_webhook(form: Form<EmbedWebhookForm>) -> HttpResponse {
 
     let http = Http::new("");
 
-    let webhook = match Webhook::from_url(&http, choosed_webhook.url.as_str()).await {
+    let webhook = match Webhook::from_url(&http, chosen_webhook_entry.url.as_str()).await {
         Ok(webhook) => webhook,
         Err(err) => return HttpResponse::InternalServerError().body(format!("Error building webhook: {}", err)),
     };
 
     let embed = CreateEmbed::new()
-        .description(&form.clone().description)
-        .title(&form.clone().title.unwrap_or_default())
-        .url(&form.clone().url.unwrap_or_default())
+        .description(form.clone().description)
+        .title(form.clone().title.unwrap_or_default())
+        .url(form.clone().url.unwrap_or_default())
         .colour(Colour::new(form.clone().colour.unwrap_or_default()))
         //.footer(&form.clone().footer.unwrap_or_default())
-        .image(&form.clone().image.unwrap_or_default())
-        .thumbnail(&form.clone().thumbnail.unwrap_or_default());
+        .image(form.clone().image.unwrap_or_default())
+        .thumbnail(form.clone().thumbnail.unwrap_or_default());
     //.author(&form.clone().author.unwrap_or_default())
     //.fields(&form.clone().fields.unwrap_or_default());
 
     let builder = ExecuteWebhook::new()
         .embed(embed)
-        .username(choosed_webhook.name.as_str());
+        .username(chosen_webhook_entry.name.as_str());
 
     match webhook.execute(&http, false, builder).await {
         Ok(_) => HttpResponse::Ok().body("status:sent"),
         Err(err) => HttpResponse::InternalServerError().body(format!("Error executing webhook: {}", err)),
     }
+}
+
+fn retrieved_webhook<'a>(target_webhook: &String) -> Option<&'a WebhookEntry> {
+    return CONFIG.webhooks_list.iter().filter(|x| x.webhook.to_lowercase() == target_webhook.to_lowercase()).next();
 }

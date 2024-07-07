@@ -6,11 +6,11 @@ use env_logger::Env;
 use lazy_static::lazy_static;
 
 use crate::api::webhook::{embed_webhook, text_webhook};
-use crate::config_utils::Configuration;
+use crate::utils::config_utils::Configuration;
+use crate::utils::database_utils::DatabaseStruct;
 
 mod api;
-mod config_utils;
-
+mod utils;
 
 lazy_static! {
      pub static ref CONFIG: Configuration = Config::builder().add_source(File::with_name("config.json")).build().expect("[ERROR] config.json not found or invalid.").try_deserialize::<Configuration>().unwrap();
@@ -19,9 +19,11 @@ lazy_static! {
 #[actix_web::main]
 async fn main() -> Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
-    HttpServer::new(|| {
+    let database = DatabaseStruct::init().await;
+    HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
+            .app_data(database.clone())
             .service(hello)
             .service(text_webhook)
             .service(embed_webhook)
