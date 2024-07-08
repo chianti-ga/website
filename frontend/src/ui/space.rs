@@ -30,6 +30,7 @@ impl eframe::App for SpacePanel {
 
                     ui.centered_and_justified(|ui| {
                         let admin_space_btn = Button::image_and_text(image, "");
+
                         if ui.add(admin_space_btn).clicked() {};
                     });
                 });
