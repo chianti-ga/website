@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+        xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+        xmlns:xlink="http://www.w3.org/1999/xlink"
+        width="61.608303mm"
+        height="24.927477mm"
+        viewBox="0 0 61.608303 24.927477"
+        version="1.1"
+        id="svg1"
+        xmlns="http://www.w3.org/2000/svg"
+>
+    <sodipodi:namedview
+            id="namedview1"
+            pagecolor="#ffffff"
+            bordercolor="#000000"
+            borderopacity="0.25"
+            inkscape:showpageshadow="2"
+            inkscape:pageopacity="0.0"
+            inkscape:pagecheckerboard="0"
+            inkscape:deskcolor="#d1d1d1"
+            inkscape:document-units="mm"/>
+    <defs
+            id="defs1">
+        <linearGradient
+                id="linearGradient6"
+                inkscape:collect="always">
+            <stop
+                    style="stop-color:#ff00ff;stop-opacity:1;"
+                    offset="0"
+                    id="stop7"/>
+            <stop
+                    style="stop-color:#7fff7f;stop-opacity:1;"
+                    offset="0.5"
+                    id="stop9"/>
+            <stop
+                    style="stop-color:#000000;stop-opacity:1;"
+                    offset="1"
+                    id="stop8"/>
+        </linearGradient>
+        <linearGradient
+                inkscape:collect="always"
+                xlink:href="#linearGradient6"
+                id="linearGradient8"
+                x1="56.70031"
+                y1="93.704048"
+                x2="118.30862"
+                y2="93.704048"
+                gradientUnits="userSpaceOnUse"/>
+    </defs>
+    <g
+            inkscape:label="Calque 1"
+            inkscape:groupmode="layer"
+            id="layer1"
+            transform="translate(-56.700311,-81.240308)">
+        <rect
+                style="fill:url(#linearGradient8);fill-opacity:1;stroke-width:0.264583"
+                id="rect1"
+                width="61.608307"
+                height="24.927471"
+                x="56.70031"
+                y="81.240311"/>
+        <text
+                xml:space="preserve"
+                style="font-size:8.46667px;fill:#000000;stroke-width:0.264583"
+                x="61.866619"
+                y="97.901672"
+                id="text9"
+                inkscape:label="text9"><tspan
+         id="tspan9"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.46667px;font-family:sans-serif;-inkscape-font-specification:sans-serif;fill:#ffffff;fill-opacity:1;stroke-width:0.264583"
+         x="61.866619"
+         y="97.901672"
+         sodipodi:role="line">MISGN IMG</tspan></text>
+    </g>
+</svg>

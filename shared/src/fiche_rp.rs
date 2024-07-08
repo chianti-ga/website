@@ -7,6 +7,12 @@ pub struct FicheRP {
     pub lore: String,
 }
 
+impl FicheRP {
+    pub fn get_markdown_string(&mut self) -> String {
+        format!("**Nom**: {}\n---\n**Job** {}\n---\n**Description** {}\n---\n**Lore du personage** {}", &self.name, &self.job, &self.description, &self.lore)
+    }
+}
+
 pub enum Job {
     Security(SecurityRole),
     Science(ScienceRole),
@@ -57,12 +63,14 @@ impl Display for ScienceLevel {
 }
 
 pub enum SecurityRole {
-    Test
+    SecurityOfficier,
+    TacticalAgent
 }
 impl Display for SecurityRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            SecurityRole::Test => { write!(f, "test fmt") }
+            SecurityRole::SecurityOfficier => write!(f, "Officier de Sécurité"),
+            SecurityRole::TacticalAgent => write!(f, "Agent Tactique")
         }
     }
 }

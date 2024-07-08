@@ -7,13 +7,13 @@ mod tests {
 
     #[test]
     fn fiche_rp() {
-        let mut fiche = FicheRP {
+        let mut fiche: FicheRP = FicheRP {
             name: "Roger".to_string(),
             job: Job::Science(ScienceRole::Researcher(ScienceLevel::Senior)),
             description: "Je suis un grand garçon".to_string(),
             lore: "je suis pas réel".to_string(),
         };
 
-        println!("{}", fiche.job)
+        println!("{}", fiche.get_markdown_string())
     }
 }
