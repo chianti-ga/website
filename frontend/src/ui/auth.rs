@@ -19,7 +19,7 @@ impl eframe::App for AuthPanel {
         egui::TopBottomPanel::top("auth_panel").show(ctx, |ui_panel| {
             ui_panel.columns(3, |columns| {
                 columns[1].vertical_centered(|ui| {
-                    let discord_button = Button::image_and_text(Image::new(format!("{}discord_steam_link.svg", &self.location_url)).fit_to_original_size(0.75).maintain_aspect_ratio(true), "connexion via Discord et Steam");
+                    let discord_button = Button::image_and_text(Image::new(format!("{}discord_steam_link.svg", &self.location_url)).fit_to_original_size(0.75).maintain_aspect_ratio(true), "Connexion via Discord et Steam");
                     if ui.add(discord_button).clicked() {
                         AUTH_INFO.lock().unwrap().authenticated = true;
                     };
