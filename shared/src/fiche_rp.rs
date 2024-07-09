@@ -1,10 +1,18 @@
 use std::fmt::{Display, Formatter};
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
 pub struct FicheRP {
+    pub discord_id: String,
     pub name: String,
     pub job: Job,
     pub description: String,
     pub lore: String,
+    pub submission_date: u128,
+    pub messages: Vec<ReviewMessage>,
+    pub version: Vec<FicheVersions>
+    //TODO:VEC RAPPORTS
 }
 
 impl FicheRP {
@@ -13,6 +21,40 @@ impl FicheRP {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct FicheVersions {
+    pub discord_id: String,
+    pub name: String,
+    pub job: Job,
+    pub description: String,
+    pub lore: String,
+    pub submission_date: u128,
+}
+
+impl FicheVersions {
+    pub fn get_markdown_string(&mut self) -> String {
+        format!("**Nom**: {}\n---\n**Job** {}\n---\n**Description** {}\n---\n**Lore du personage** {}", &self.name, &self.job, &self.description, &self.lore)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ReviewMessage {
+    pub discord_id: String,
+    pub content: String,
+    pub date: u128,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum FicheState {
+    StaffReview,
+    ScenaristReview,
+    FactionLeaderReview,
+    Accepted,
+    Refused,
+}
+
+/**     JOB INFO STARTS HERE    **/
+#[derive(Serialize, Deserialize)]
 pub enum Job {
     Security(SecurityRole),
     Science(ScienceRole),
@@ -33,6 +75,8 @@ impl Display for Job {
         }
     }
 }
+#[derive(Serialize, Deserialize)]
+
 pub enum ScienceRole {
     Assistant(ScienceLevel),
     Researcher(ScienceLevel),
@@ -47,6 +91,8 @@ impl Display for ScienceRole {
         }
     }
 }
+#[derive(Serialize, Deserialize)]
+
 pub enum ScienceLevel {
     Beginner,
     Confirmed,
@@ -61,16 +107,63 @@ impl Display for ScienceLevel {
         }
     }
 }
-
+#[derive(Serialize, Deserialize)]
 pub enum SecurityRole {
-    SecurityOfficier,
-    TacticalAgent
+    SecurityOfficier(SecurityLevel),
+    TacticalAgent(SecurityLevel)
 }
 impl Display for SecurityRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            SecurityRole::SecurityOfficier => write!(f, "Officier de Sécurité"),
-            SecurityRole::TacticalAgent => write!(f, "Agent Tactique")
+            SecurityRole::SecurityOfficier(level) => write!(f, "Officier de Sécurité ({})", level),
+            SecurityRole::TacticalAgent(level) => write!(f, "Agent Tactique ({})", level)
+        }
+    }
+}
+#[derive(Serialize, Deserialize)]
+pub enum SecurityLevel {
+    Rct,
+    Sdt,
+    sdt,
+    cpl,
+    cplC,
+    CplC1c,
+    Sgt,
+    SgtC,
+    Adj,
+    AdjC,
+    Maj,
+    Asp,
+    Slt,
+    Lt,
+    Cpt,
+    Cmd,
+    LtCol,
+    Col,
+    Gen,
+}
+impl Display for SecurityLevel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SecurityLevel::Rct => write!(f, "Recrue"),
+            SecurityLevel::Sdt => write!(f, "Soldat"),
+            SecurityLevel::sdt => write!(f, "Première Classe"),
+            SecurityLevel::cpl => write!(f, "Caporal"),
+            SecurityLevel::cplC => write!(f, "Caporal-Chef"),
+            SecurityLevel::CplC1c => write!(f, "Caporal-Chef Première Classe"),
+            SecurityLevel::Sgt => write!(f, "Sergent"),
+            SecurityLevel::SgtC => write!(f, "Sergent-Chef"),
+            SecurityLevel::Adj => write!(f, "Adjudant"),
+            SecurityLevel::AdjC => write!(f, "Adjudant-Chef"),
+            SecurityLevel::Maj => write!(f, "Major"),
+            SecurityLevel::Asp => write!(f, "Aspirant"),
+            SecurityLevel::Slt => write!(f, "Sous-Lieutenant"),
+            SecurityLevel::Lt => write!(f, "Lieutenant"),
+            SecurityLevel::Cpt => write!(f, "Capitaine"),
+            SecurityLevel::Cmd => write!(f, "Commandant"),
+            SecurityLevel::LtCol => write!(f, "Lieutenant-Colonel"),
+            SecurityLevel::Col => write!(f, "Colonel"),
+            SecurityLevel::Gen => write!(f, "Général")
         }
     }
 }
