@@ -13,7 +13,7 @@ mod api;
 mod utils;
 
 lazy_static! {
-     pub static ref CONFIG: Configuration = Config::builder().add_source(File::with_name("config.json")).build().expect("[ERROR] config.json not found or invalid.").try_deserialize::<Configuration>().unwrap();
+     pub static ref CONFIG: Configuration = Config::builder().add_source(File::with_name("data/config.json")).build().expect("[ERROR] config.json not found or invalid.").try_deserialize::<Configuration>().unwrap();
 }
 
 #[actix_web::main]
