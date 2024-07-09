@@ -19,6 +19,6 @@ RUN build.sh
 FROM alpine
 
 RUN apk add --no-cache ca-certificates
-COPY --from=builder /srv
+COPY --from=builder /srv /srv
 
 CMD ["backend"]
