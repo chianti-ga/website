@@ -7,7 +7,8 @@ use egui::FontId;
 use lazy_static::lazy_static;
 
 use crate::ui::auth::AuthPanel;
-use crate::ui::space::SpacePanel;
+use crate::ui::select_space::SpacePanel;
+use crate::ui::spaces::fiche_space::FicheSpace;
 
 pub struct App {
     location_url: String,
@@ -27,9 +28,30 @@ impl Default for AuthInfo {
         }
     }
 }
+pub struct SelectedSpace {
+    pub selected_space: Space,
+}
+impl Default for SelectedSpace {
+    fn default() -> Self {
+        SelectedSpace {
+            selected_space: Space::eSelection
+        }
+    }
+}
+#[derive(Copy, Clone)]
+pub enum Space {
+    eSelection,
+    eSpaceSelection,
+    eAdminSpace,
+    eFicheSpace,
+    eScienceSpace,
+    eSecuritySpace,
+}
 
 lazy_static! {
-     pub static ref AUTH_INFO:Arc<Mutex<AuthInfo>> = Arc::new(Mutex::new(AuthInfo::default()));
+    pub static ref AUTH_INFO:Arc<Mutex<AuthInfo>> = Arc::new(Mutex::new(AuthInfo::default()));
+    pub static ref SELECTED_SPACE:Arc<Mutex<SelectedSpace>> = Arc::new(Mutex::new(SelectedSpace::default()));
+
 }
 
 impl App {
@@ -64,8 +86,17 @@ impl eframe::App for App {
         if !AUTH_INFO.lock().unwrap().authenticated {
             auth_panel.update(ctx, frame);
         }
+        let selected_space: Space = SELECTED_SPACE.lock().unwrap().selected_space;
 
-        SpacePanel::new(self.location_url.clone()).update(ctx, frame);
+        match selected_space {
+            Space::eSelection => SpacePanel::new(self.location_url.clone()).update(ctx, frame),
+            Space::eSpaceSelection => {}
+            Space::eAdminSpace => {}
+            Space::eFicheSpace => FicheSpace::new().update(ctx, frame),
+            Space::eScienceSpace => {}
+            Space::eSecuritySpace => {}
+        }
+
 
         egui::TopBottomPanel::bottom("botton_panel").show(ctx, |ui| {
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
@@ -75,6 +106,8 @@ impl eframe::App for App {
         });
     }
 }
+
+fn image_resolver() {}
 
 fn footer(ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
