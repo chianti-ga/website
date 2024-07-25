@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct FicheRP {
-    pub discord_id: String,
     pub name: String,
     pub job: Job,
     pub description: String,
@@ -23,7 +22,6 @@ impl FicheRP {
 
 #[derive(Serialize, Deserialize)]
 pub struct FicheVersions {
-    pub discord_id: String,
     pub name: String,
     pub job: Job,
     pub description: String,
@@ -49,8 +47,12 @@ pub enum FicheState {
     StaffReview,
     ScenaristReview,
     FactionLeaderReview,
+    RequestModification,
+    StaffValidated,
+    ScenaristValidated,
     Accepted,
     Refused,
+
 }
 
 /**     JOB INFO STARTS HERE    **/

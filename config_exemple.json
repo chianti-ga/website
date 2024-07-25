@@ -7,5 +7,12 @@
       "url": "https://discord.com/api/webhooks/1258225458944806964/Ve4c5b9kZpn-vSeXOLjtQb8rcm0fzDyb3tRIVxgvQ-s90P3ZhAE8VgZKH-GiLQG1-OrS",
       "name": "RUST TEST"
     }
-  ]
+  ],
+  "oauth2client": {
+    "client_id": "1259529437280600236",
+    "client_secret": "_9ti4Y7L4iqfHv3YXgGdh0xyHaVDaW_4",
+    "auth_url": "",
+    "redirect_url": "",
+    "token_url": ""
+  }
 }

@@ -1,2 +1,2 @@
 pub mod webhook;
-pub mod github;
+pub mod oauth2;

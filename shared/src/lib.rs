@@ -1,5 +1,6 @@
 mod fiche_rp;
 mod research_report;
+mod user;
 
 #[cfg(test)]
 mod tests {
@@ -8,7 +9,6 @@ mod tests {
     #[test]
     fn fiche_rp() {
         let mut fiche: FicheRP = FicheRP {
-            discord_id: "".to_string(),
             name: "Roger".to_string(),
             job: Job::Science(ScienceRole::Researcher(ScienceLevel::Senior)),
             description: "Je suis un grand garçon".to_string(),
