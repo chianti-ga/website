@@ -75,11 +75,9 @@ impl eframe::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
+            /*egui::menu::bar(ui, |ui| {
 
-            egui::menu::bar(ui, |ui| {
-                egui::widgets::global_dark_light_mode_buttons(ui);
-            });
+            });*/
         });
 
         let mut auth_panel: AuthPanel = AuthPanel::new(self.location_url.clone());
@@ -107,7 +105,11 @@ impl eframe::App for App {
     }
 }
 
-fn image_resolver() {}
+pub fn image_resolver(location_url: &String, image_name: &str) -> String {
+    let mut path: String = location_url.clone();
+    path.push_str(image_name);
+    path
+}
 
 fn footer(ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
