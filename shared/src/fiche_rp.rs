@@ -2,6 +2,8 @@ use std::fmt::{Display, Formatter};
 
 use serde::{Deserialize, Serialize};
 
+use crate::user::UserAccount;
+
 #[derive(Serialize, Deserialize)]
 pub struct FicheRP {
     pub name: String,
@@ -11,6 +13,7 @@ pub struct FicheRP {
     pub submission_date: u128,
     pub messages: Vec<ReviewMessage>,
     pub version: Vec<FicheVersions>
+    pub state: FicheState,
     //TODO:VEC RAPPORTS
 }
 
@@ -37,21 +40,21 @@ impl FicheVersions {
 
 #[derive(Serialize, Deserialize)]
 pub struct ReviewMessage {
-    pub discord_id: String,
+    pub user: UserAccount,
     pub content: String,
     pub date: u128,
+    pub is_private: bool,
+    pub set_state: FicheState,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum FicheState {
-    StaffReview,
-    ScenaristReview,
-    FactionLeaderReview,
+    Waiting,
     RequestModification,
     StaffValidated,
-    ScenaristValidated,
     Accepted,
     Refused,
+    Comment
 
 }
 
