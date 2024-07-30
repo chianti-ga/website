@@ -22,6 +22,7 @@ struct OAuth2Callback {
 #[get("/api/oauth2/auth/")]
 pub async fn auth(session: Session, app_data: web::Data<AppData>) -> impl Responder {
     let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
+    //IMPORTANT: The urls should have "/" appended to the end, the lib will crash if so
     let client =
         BasicClient::new(
             ClientId::new(oauth2_info.client_id.clone()),
@@ -35,7 +36,7 @@ pub async fn auth(session: Session, app_data: web::Data<AppData>) -> impl Respon
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
     // Generate the full authorization URL.
-    let (auth_url, csrf_token) = client
+    let (auth_url, _csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         // Set the desired scopes.
         .add_scope(Scope::new("identify".to_string()))
@@ -64,7 +65,6 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
             let code = callback_data.code.clone();
 
             match client.exchange_code(AuthorizationCode::new(code))
-                // Set the PKCE code verifier.
                 .set_pkce_verifier(PkceCodeVerifier::new(pkce_verifier))
                 .request_async(async_http_client).await {
                 Ok(token_response) => {
