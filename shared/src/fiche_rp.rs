@@ -12,7 +12,7 @@ pub struct FicheRP {
     pub lore: String,
     pub submission_date: u128,
     pub messages: Vec<ReviewMessage>,
-    pub version: Vec<FicheVersions>
+    pub version: Vec<FicheVersions>,
     pub state: FicheState,
     //TODO:VEC RAPPORTS
 }
