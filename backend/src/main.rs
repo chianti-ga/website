@@ -18,6 +18,7 @@ use oauth2::basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicToken
 use crate::api::oauth2::{auth, callback};
 use crate::api::webhook::{embed_webhook, text_webhook};
 use crate::utils::config_utils::Configuration;
+use crate::utils::database_utils::DatabaseStruct;
 
 mod api;
 mod utils;
@@ -36,7 +37,7 @@ async fn main() -> Result<()> {
     let app_data = Data::new(AppData {
         client_map: Mutex::new(HashMap::new()),
     });
-    //let database = DatabaseStruct::init().await;
+    let database = DatabaseStruct::init().await;
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -46,7 +47,7 @@ async fn main() -> Result<()> {
                     .cookie_content_security(CookieContentSecurity::Private)
                     .build()
             })
-            //.app_data(database.clone())
+            .app_data(database.clone())
             .app_data(app_data.clone())
             .service(hello)
             .service(text_webhook)

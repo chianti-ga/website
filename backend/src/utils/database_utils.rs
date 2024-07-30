@@ -8,7 +8,7 @@ pub struct DatabaseStruct {
 }
 impl DatabaseStruct {
     pub async fn init() -> Self {
-        let uri: String = format!("mongodb+srv://{}", &CONFIG.mongo_db_uri); //SCRAM Auth
+        let uri: &String = &CONFIG.mongo_db_uri;
         let client: Client = Client::with_uri_str(uri).await.expect("[ERROR] Can't connect to mongodb server!");
         DatabaseStruct {
             client
