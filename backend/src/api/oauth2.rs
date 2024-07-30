@@ -49,7 +49,6 @@ pub async fn auth(session: Session, app_data: web::Data<AppData>) -> impl Respon
     app_data.client_map.lock().unwrap().insert(client_id.to_string(), client);
     session.insert("pkce_verif", pkce_verifier.secret()).expect("TODO: panic message");
 
-
     Redirect::to(auth_url.to_string())
 }
 
@@ -70,18 +69,16 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
                 .request_async(async_http_client).await {
                 Ok(token_response) => {
                     HttpResponse::Ok().body(format!("{:?}\n{:?}\n{:?}", callback_data.0, client_id, token_response))
-                },
+                }
                 Err(err) => {
                     eprintln!("{}", err);
                     HttpResponse::InternalServerError().body("")
                 }
             }
-        },
+        }
         Err(err) => {
             error!("{}",err);
             HttpResponse::InternalServerError().body(err.to_string())
         }
-    }
-
-
+    };
 }

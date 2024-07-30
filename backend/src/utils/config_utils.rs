@@ -6,7 +6,7 @@ pub struct Configuration {
     pub port: u16,
     pub webhooks_list: Vec<WebhookEntry>,
     pub mongo_db_uri: String,
-    pub oauth2client: Oauth2Client
+    pub oauth2client: Oauth2Client,
 }
 #[derive(Deserialize)]
 #[derive(Clone)]

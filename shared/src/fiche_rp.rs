@@ -54,8 +54,7 @@ pub enum FicheState {
     StaffValidated,
     Accepted,
     Refused,
-    Comment
-
+    Comment,
 }
 
 /**     JOB INFO STARTS HERE    **/
@@ -81,7 +80,6 @@ impl Display for Job {
     }
 }
 #[derive(Serialize, Deserialize)]
-
 pub enum ScienceRole {
     Assistant(ScienceLevel),
     Researcher(ScienceLevel),
@@ -97,7 +95,6 @@ impl Display for ScienceRole {
     }
 }
 #[derive(Serialize, Deserialize)]
-
 pub enum ScienceLevel {
     Beginner,
     Confirmed,
@@ -115,7 +112,7 @@ impl Display for ScienceLevel {
 #[derive(Serialize, Deserialize)]
 pub enum SecurityRole {
     SecurityOfficier(SecurityLevel),
-    TacticalAgent(SecurityLevel)
+    TacticalAgent(SecurityLevel),
 }
 impl Display for SecurityRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

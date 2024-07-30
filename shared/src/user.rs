@@ -9,5 +9,5 @@ pub struct UserAccount {
     pub auth_token: String,
     pub fiches: Vec<FicheRP>,
     pub creation_date: u128,
-    pub banned: bool
+    pub banned: bool,
 }

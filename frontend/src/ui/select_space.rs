@@ -71,7 +71,7 @@ impl eframe::App for SpacePanel {
                         .max_width(ui.available_width() - 20.0)
                         .maintain_aspect_ratio(true)
                         .show_loading_spinner(true);
-                    
+
                     ui.centered_and_justified(|ui| {
                         let fiche_space_btn = Button::image_and_text(image, "");
 

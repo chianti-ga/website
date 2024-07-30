@@ -95,7 +95,6 @@ impl eframe::App for App {
             Space::eSecuritySpace => {}
         }
 
-
         egui::TopBottomPanel::bottom("botton_panel").show(ctx, |ui| {
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 footer(ui);
