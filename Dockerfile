@@ -26,24 +26,23 @@ COPY shared/Cargo.toml /srv/shared/Cargo.toml
 
 # this build step will cache your dependencies
 RUN cargo build --release --package=frontend
-RUN trunk build frontend/index.html
-
+RUN trunk build --release frontend/index.html
 
 RUN rm -r /srv/backend/src /srv/frontend/src /srv/shared/src
 
-
 COPY . .
 
-# build for release
-RUN rm -r /srv/out
+RUN cargo build --release --package=frontend
+RUN trunk build frontend/index.html
 
-RUN sh build.sh
+COPY
+
 
 # our final base
 FROM rust:slim-bookworm
 
 # copy the build artifact from the build stage
-COPY --from=build /srv/out .
+COPY --from=build /srv/out_release .
 
 # set the startup command to run your binary
 CMD ["./backend"]
