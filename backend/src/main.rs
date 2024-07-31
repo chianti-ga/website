@@ -43,6 +43,7 @@ struct AppData {
 #[actix_web::main]
 async fn main() -> Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
+
     let dbclient: mongodb::Client = init_mongo().await;
     let app_data = Data::new(AppData {
         client_map: DashMap::new(),
@@ -69,7 +70,6 @@ async fn main() -> Result<()> {
 
             while let Some(account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
                 let time_passed_since_renew = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-
                 if time_passed_since_renew <= 86400 { //renew when one day or less is left
                     renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
                     info!("Renewing token for {}({})", account.discord_user.username, account.discord_user.id)

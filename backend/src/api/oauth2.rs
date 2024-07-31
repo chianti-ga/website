@@ -5,7 +5,7 @@ use actix_session::Session;
 use actix_web::{get, HttpRequest, Responder, web};
 use actix_web::cookie::Cookie;
 use actix_web::web::Redirect;
-use log::error;
+use log::{error, info};
 use mongodb::bson::{doc, Document};
 use mongodb::Collection;
 use mongodb::results::InsertOneResult;
@@ -20,7 +20,7 @@ use shared::discord::DiscordAuthorizationInformation;
 use shared::user::Account;
 
 use crate::{AppData, CONFIG};
-use crate::utils::auth_utils::{is_auth_valid, update_account_discord};
+use crate::utils::auth_utils::{is_auth_valid, is_user_registered, update_account_discord, update_token};
 use crate::utils::config_utils::Oauth2Client;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -88,6 +88,16 @@ pub async fn callback(req: HttpRequest, callback_data: web::Query<OAuth2Callback
             let accounts: Collection<Account> = app_data.dbclient.database("visualis-website").collection("account");
             let authorization_information: DiscordAuthorizationInformation = response.json().await.expect("Can't parse authorization_information json");
 
+            if is_user_registered(&authorization_information.user.id, app_data.dbclient.clone()).await {
+                info!("User already registered, updating token...");
+                update_token(&authorization_information.user.id, token_response.clone(), app_data.dbclient.clone()).await;
+
+                info!("Token updated for {}({})",authorization_information.user.username.clone(), authorization_information.user.id.clone());
+                let mut token_cookie: Cookie = Cookie::new("token", token_response.access_token().secret());
+                token_cookie.set_secure(true);
+                return actix_web::HttpResponse::Ok().cookie(token_cookie).body("")
+            }
+
             let time_now: u64 = SystemTime::now()
                 .duration_since(UNIX_EPOCH).expect("invalid time")
                 .as_secs();
@@ -95,7 +105,7 @@ pub async fn callback(req: HttpRequest, callback_data: web::Query<OAuth2Callback
             let authenticated_user = Account {
                 discord_user: authorization_information.user,
                 token: token_response.clone(),
-                last_renewal: 0,
+                last_renewal: time_now,
                 fiches: vec![],
                 creation_date: time_now,
                 banned: false,

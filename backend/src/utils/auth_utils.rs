@@ -1,3 +1,6 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use log::info;
 use mongodb::bson::{doc, Document, to_bson};
 use mongodb::Collection;
 use oauth2::{RefreshToken, TokenResponse};
@@ -13,7 +16,30 @@ pub async fn is_auth_valid(user_token: &str, client: mongodb::Client) -> bool {
     let query = doc! {
         "token.access_token" : user_token
     };
-    accounts.count_documents(query).await.unwrap() > 1
+    accounts.count_documents(query).await.unwrap() > 0
+}
+
+pub async fn is_user_registered(discord_id: &String, client: mongodb::Client) -> bool {
+    let accounts: Collection<Account> = client.database("visualis-website").collection("account");
+    let query = doc! {
+        "discord_user.id" : discord_id
+    };
+    accounts.count_documents(query).await.unwrap() > 0
+}
+pub async fn update_token(discord_id: &String, token_response: BasicTokenResponse, client: mongodb::Client) {
+    let accounts: Collection<Account> = client.database("visualis-website").collection("account");
+    let query = doc! {
+        "discord_user.id" : discord_id
+    };
+    accounts.find_one(query.clone()).await.expect("Can't find account to update").expect("Can't retrieve account document");
+
+    let update_doc = doc! {
+        "$set": {
+            "token": to_bson(&token_response).unwrap(),
+        }
+    };
+    accounts.update_one(query, update_doc).await.expect("Failed to update account for token change");
+    update_account_discord(token_response.access_token().secret(), client).await;
 }
 
 pub async fn update_account_discord(token: &str, client: mongodb::Client) {
@@ -37,6 +63,7 @@ pub async fn update_account_discord(token: &str, client: mongodb::Client) {
         }
     };
     accounts.update_one(query, update_doc).await.expect("Failed to update account");
+    info!("Discord info updated for {}({})",authorization_information.user.username, authorization_information.user.id);
 }
 
 pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mongodb::Client, oauth_client: BasicClient) {
@@ -51,9 +78,12 @@ pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mo
         .request_async(async_http_client)
         .await.expect("Can't renew token");
 
+    let time_now: u64 = SystemTime::now().duration_since(UNIX_EPOCH).expect("invalid time").as_secs();
+
     let update_doc = doc! {
         "$set": {
             "token": to_bson(&token_result).unwrap(),
+            "last_renewal": to_bson(&time_now).unwrap()
         }
     };
     accounts.update_one(query, update_doc).await.expect("Failed to update account for token change");
