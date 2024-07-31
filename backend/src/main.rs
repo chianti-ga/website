@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
     });
 
     actix_rt::spawn(async move {
-        let mut interval = time::interval(Duration::from_secs(5));
+        let mut interval = time::interval(Duration::from_secs(3600)); // check every hour
         let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
         //IMPORTANT: The urls should NOT have "/" appended to the end, the lib will crash if so
         let oauth_client =
@@ -60,18 +60,18 @@ async fn main() -> Result<()> {
                 AuthUrl::new(oauth2_info.auth_url.clone()).unwrap(),
                 Some(TokenUrl::new(oauth2_info.token_url.clone()).unwrap()))
                 // Set the URL the user will be redirected to after the authorization process.
-                .set_redirect_uri(RedirectUrl::new("http://localhost:8080/api/oauth2/callback".to_string()).unwrap());
+                .set_redirect_uri(RedirectUrl::new(oauth2_info.redirect_url.clone()).unwrap());
         loop {
             interval.tick().await;
+
             let account_collection: Collection<Account> = dbclient.clone().database("visualis-website").collection("account");
             let mut accounts_cursor: Cursor<Account> = account_collection.find(Document::new()).await.expect("Can't get all account");
 
             while let Some(account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
-                //FIXME: Absurd value got like 13days wtf the expire date is only 7days
                 let time_passed_since_renew = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-                println!("{}", time_passed_since_renew);
-                if time_passed_since_renew <= 518400 { //renew when one day or less is left
-                    //renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
+
+                if time_passed_since_renew <= 86400 { //renew when one day or less is left
+                    renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
                     info!("Renewing token for {}({})", account.discord_user.username, account.discord_user.id)
                 }
             }

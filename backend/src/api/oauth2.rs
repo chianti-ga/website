@@ -45,7 +45,7 @@ pub async fn auth(req: HttpRequest, session: Session, app_data: web::Data<AppDat
             AuthUrl::new(oauth2_info.auth_url.clone()).unwrap(),
             Some(TokenUrl::new(oauth2_info.token_url.clone()).unwrap()))
             // Set the URL the user will be redirected to after the authorization process.
-            .set_redirect_uri(RedirectUrl::new("http://localhost:8080/api/oauth2/callback".to_string()).unwrap());
+            .set_redirect_uri(RedirectUrl::new(oauth2_info.redirect_url.clone()).unwrap());
 
     // Generate a PKCE challenge.
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
