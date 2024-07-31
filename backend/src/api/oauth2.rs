@@ -69,7 +69,7 @@ pub async fn auth(req: HttpRequest, session: Session, app_data: web::Data<AppDat
 }
 
 #[get("/api/oauth2/callback")]
-pub async fn callback(req: HttpRequest, callback_data: web::Query<OAuth2Callback>, session: Session, app_data: web::Data<AppData>) -> impl Responder {
+pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Session, app_data: web::Data<AppData>) -> impl Responder {
     let client_id: String = session.get::<String>("client_id").unwrap().unwrap();
     let client = app_data.client_map.get(&client_id).unwrap();
     let pkce_verifier: String = session.get::<String>("pkce_verif").unwrap().unwrap();
@@ -95,7 +95,7 @@ pub async fn callback(req: HttpRequest, callback_data: web::Query<OAuth2Callback
                 info!("Token updated for {}({})",authorization_information.user.username.clone(), authorization_information.user.id.clone());
                 let mut token_cookie: Cookie = Cookie::new("token", token_response.access_token().secret());
                 token_cookie.set_secure(true);
-                return actix_web::HttpResponse::Ok().cookie(token_cookie).body("")
+                return actix_web::HttpResponse::Ok().cookie(token_cookie).body("");
             }
 
             let time_now: u64 = SystemTime::now()
