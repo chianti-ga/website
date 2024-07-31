@@ -1,6 +1,7 @@
-mod fiche_rp;
-mod research_report;
-mod user;
+pub mod fiche_rp;
+pub mod research_report;
+pub mod user;
+pub mod discord;
 
 #[cfg(test)]
 mod tests {

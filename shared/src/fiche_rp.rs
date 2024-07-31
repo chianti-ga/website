@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 
 use serde::{Deserialize, Serialize};
 
-use crate::user::UserAccount;
+use crate::user::Account;
 
 #[derive(Serialize, Deserialize)]
 pub struct FicheRP {
@@ -40,7 +40,7 @@ impl FicheVersions {
 
 #[derive(Serialize, Deserialize)]
 pub struct ReviewMessage {
-    pub user: UserAccount,
+    pub user: Account,
     pub content: String,
     pub date: u128,
     pub is_private: bool,
