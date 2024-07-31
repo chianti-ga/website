@@ -34,18 +34,18 @@ pub struct SelectedSpace {
 impl Default for SelectedSpace {
     fn default() -> Self {
         SelectedSpace {
-            selected_space: Space::eSelection
+            selected_space: Space::Eselection
         }
     }
 }
 #[derive(Copy, Clone)]
 pub enum Space {
-    eSelection,
-    eSpaceSelection,
-    eAdminSpace,
-    eFicheSpace,
-    eScienceSpace,
-    eSecuritySpace,
+    Eselection,
+    EspaceSelection,
+    EadminSpace,
+    EficheSpace,
+    EscienceSpace,
+    EsecuritySpace,
 }
 
 lazy_static! {
@@ -87,12 +87,12 @@ impl eframe::App for App {
         let selected_space: Space = SELECTED_SPACE.lock().unwrap().selected_space;
 
         match selected_space {
-            Space::eSelection => SpacePanel::new(self.location_url.clone()).update(ctx, frame),
-            Space::eSpaceSelection => {}
-            Space::eAdminSpace => {}
-            Space::eFicheSpace => FicheSpace::new().update(ctx, frame),
-            Space::eScienceSpace => {}
-            Space::eSecuritySpace => {}
+            Space::Eselection => SpacePanel::new(self.location_url.clone()).update(ctx, frame),
+            Space::EspaceSelection => {}
+            Space::EadminSpace => {}
+            Space::EficheSpace => FicheSpace::new().update(ctx, frame),
+            Space::EscienceSpace => {}
+            Space::EsecuritySpace => {}
         }
 
         egui::TopBottomPanel::bottom("botton_panel").show(ctx, |ui| {
