@@ -17,6 +17,7 @@ mod tests {
             submission_date: 0,
             messages: vec![],
             version: vec![],
+            state: FicheState::Waiting,
         };
 
         println!("{}", serde_json::to_string(&fiche).unwrap())
