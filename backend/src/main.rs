@@ -1,24 +1,32 @@
-use std::collections::HashMap;
-use std::sync::Mutex;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use actix_files::Files;
 use actix_session::config::CookieContentSecurity;
 use actix_session::SessionMiddleware;
 use actix_session::storage::CookieSessionStore;
 use actix_web::{App, get, HttpResponse, HttpServer, Responder};
 use actix_web::cookie::Key;
 use actix_web::middleware::Logger;
+use actix_web::rt::time;
 use actix_web::web::Data;
 use anyhow::Result;
 use config::{Config, File};
+use dashmap::DashMap;
 use env_logger::Env;
 use lazy_static::lazy_static;
-use oauth2::{Client, StandardRevocableToken};
-use oauth2::basic::{BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenResponse, BasicTokenType};
+use log::info;
+use mongodb::{Collection, Cursor};
+use mongodb::bson::{bson, doc, Document};
+use oauth2::{AuthUrl, Client, ClientId, ClientSecret, RedirectUrl, StandardRevocableToken, TokenResponse, TokenUrl};
+use oauth2::basic::{BasicClient, BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenResponse, BasicTokenType};
+use serenity::futures::{StreamExt, TryStreamExt};
+
+use shared::user::Account;
 
 use crate::api::oauth2::{auth, callback};
 use crate::api::webhook::{embed_webhook, text_webhook};
-use crate::utils::config_utils::Configuration;
-use crate::utils::database_utils::DatabaseStruct;
+use crate::utils::auth_utils::renew_token;
+use crate::utils::config_utils::{Configuration, Oauth2Client};
 
 mod api;
 mod utils;
@@ -28,16 +36,48 @@ lazy_static! {
 }
 
 struct AppData {
-    client_map: Mutex<HashMap<String, Client<BasicErrorResponse, BasicTokenResponse, BasicTokenType, BasicTokenIntrospectionResponse, StandardRevocableToken, BasicRevocationErrorResponse>>>,
+    client_map: DashMap<String, Client<BasicErrorResponse, BasicTokenResponse, BasicTokenType, BasicTokenIntrospectionResponse, StandardRevocableToken, BasicRevocationErrorResponse>>,
+    dbclient: mongodb::Client,
 }
 
 #[actix_web::main]
 async fn main() -> Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
+    let dbclient: mongodb::Client = init_mongo().await;
     let app_data = Data::new(AppData {
-        client_map: Mutex::new(HashMap::new()),
+        client_map: DashMap::new(),
+        dbclient: dbclient.clone(),
     });
-    let database = DatabaseStruct::init().await;
+
+    actix_rt::spawn(async move {
+        let mut interval = time::interval(Duration::from_secs(5));
+        let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
+        //IMPORTANT: The urls should NOT have "/" appended to the end, the lib will crash if so
+        let oauth_client =
+            BasicClient::new(
+                ClientId::new(oauth2_info.client_id.clone()),
+                Some(ClientSecret::new(oauth2_info.client_secret.clone())),
+                AuthUrl::new(oauth2_info.auth_url.clone()).unwrap(),
+                Some(TokenUrl::new(oauth2_info.token_url.clone()).unwrap()))
+                // Set the URL the user will be redirected to after the authorization process.
+                .set_redirect_uri(RedirectUrl::new("http://localhost:8080/api/oauth2/callback".to_string()).unwrap());
+        loop {
+            interval.tick().await;
+            let account_collection: Collection<Account> = dbclient.clone().database("visualis-website").collection("account");
+            let mut accounts_cursor: Cursor<Account> = account_collection.find(Document::new()).await.expect("Can't get all account");
+
+            while let Some(account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
+                //FIXME: Absurd value got like 13days wtf the expire date is only 7days
+                let time_passed_since_renew = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                println!("{}", time_passed_since_renew);
+                if time_passed_since_renew <= 518400 { //renew when one day or less is left
+                    //renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
+                    info!("Renewing token for {}({})", account.discord_user.username, account.discord_user.id)
+                }
+            }
+        }
+    });
+
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -47,13 +87,12 @@ async fn main() -> Result<()> {
                     .cookie_content_security(CookieContentSecurity::Private)
                     .build()
             })
-            .app_data(database.clone())
-            .app_data(app_data.clone())
-            .service(hello)
             .service(text_webhook)
             .service(embed_webhook)
             .service(auth)
             .service(callback)
+            .service(Files::new("/", "dist").index_file("index.html"))
+            .app_data(app_data.clone())
     })
         .bind(("127.0.0.1", CONFIG.port))
         .map_err(anyhow::Error::msg)?
@@ -63,7 +102,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-#[get("/")]
-async fn hello() -> impl Responder {
-    HttpResponse::Ok().body(include_str!("ress/frontpage.html"))
+pub async fn init_mongo() -> mongodb::Client {
+    let uri: &String = &CONFIG.mongo_db_uri;
+    mongodb::Client::with_uri_str(uri).await.expect("[ERROR] Can't connect to mongodb server!")
 }
