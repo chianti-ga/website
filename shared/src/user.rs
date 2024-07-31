@@ -7,6 +7,7 @@ use crate::fiche_rp::FicheRP;
 #[derive(Serialize, Deserialize)]
 pub struct Account {
     pub discord_user: User,
+    pub discord_roles: Vec<String>,
     pub token: BasicTokenResponse,
     pub last_renewal: u64,
     pub fiches: Vec<FicheRP>,

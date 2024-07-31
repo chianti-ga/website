@@ -7,8 +7,9 @@ use oauth2::{RefreshToken, TokenResponse};
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::reqwest::async_http_client;
 use reqwest::Response;
+use serde_json::Value;
 
-use shared::discord::DiscordAuthorizationInformation;
+use shared::discord::{DiscordAuthorizationInformation, GuildMember};
 use shared::user::Account;
 
 pub async fn is_auth_valid(user_token: &str, client: mongodb::Client) -> bool {
@@ -47,8 +48,6 @@ pub async fn update_account_discord(token: &str, client: mongodb::Client) {
     let query: Document = doc! {
         "token.access_token" : token
     };
-    let account = accounts.find_one(query.clone()).await.expect("Can't find account to update").expect("Can't retrieve account document");
-
     let response: Response = reqwest::Client::new()
         .get("https://discord.com/api/oauth2/@me")
         .bearer_auth(token)
@@ -57,9 +56,20 @@ pub async fn update_account_discord(token: &str, client: mongodb::Client) {
 
     let authorization_information: DiscordAuthorizationInformation = response.json().await.expect("Can't parse authorization_information json");
 
+    let discord_guild_member_response: Response = reqwest::Client::new()
+        .get("https://discord.com/api/users/@me/guilds/1031296063056924714/member")
+        .bearer_auth(token)
+        .send()
+        .await.expect("Can't get token_response");
+
+    let guild_member: GuildMember = discord_guild_member_response.json().await.unwrap_or(GuildMember {
+        roles: vec![],
+    });
+
     let update_doc = doc! {
         "$set": {
-            "discord_user": to_bson(&authorization_information.user).unwrap()
+            "discord_user": to_bson(&authorization_information.user).unwrap(),
+            "discord_roles" : to_bson(&guild_member.roles).unwrap()
         }
     };
     accounts.update_one(query, update_doc).await.expect("Failed to update account");

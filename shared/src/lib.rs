@@ -9,7 +9,7 @@ mod tests {
 
     #[test]
     fn fiche_rp() {
-        let mut fiche: FicheRP = FicheRP {
+        let fiche: FicheRP = FicheRP {
             name: "Roger".to_string(),
             job: Job::Science(ScienceRole::Researcher(ScienceLevel::Senior)),
             description: "Je suis un grand garçon".to_string(),

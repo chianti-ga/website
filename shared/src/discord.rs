@@ -12,4 +12,7 @@ pub struct User {
     pub username: String,
     pub avatar: String,
 }
-
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct GuildMember {
+    pub roles: Vec<String>,
+}
