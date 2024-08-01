@@ -3,8 +3,10 @@ name = "shared"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-mongodb = "3.0.1"
+[target.'cfg(target_arch = "x86_64")'.dependencies]
 oauth2 = "4.4.2"
+
+
+[dependencies]
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.120"
