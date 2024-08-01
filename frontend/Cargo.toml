@@ -17,6 +17,8 @@ serde = "1.0.198"
 serde_json = "1.0.117"
 json-gettext = "4.0.10"
 shared = { version = "0.1.0", path = "../shared" }
+chrono = "0.4.38"
+egui_commonmark = { version = "0.17.0", features = ["default", "better_syntax_highlighting", "load-images", "svg"] }
 #shared = { version = "0.1.0", path = "../shared" }
 
 # web:
