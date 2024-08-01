@@ -10,7 +10,7 @@ pub struct FicheRP {
     pub job: Job,
     pub description: String,
     pub lore: String,
-    pub submission_date: u128,
+    pub submission_date: u64,
     pub messages: Vec<ReviewMessage>,
     pub version: Vec<FicheVersions>,
     pub state: FicheState,
@@ -55,6 +55,18 @@ pub enum FicheState {
     Accepted,
     Refused,
     Comment,
+}
+impl FicheState {
+    pub fn get_text(&self) -> &str {
+        match self {
+            FicheState::Waiting => "EN ATTENTE",
+            FicheState::RequestModification => "DEMANDE DE MODIFICATIONS",
+            FicheState::StaffValidated => "CONFORME",
+            FicheState::Accepted => "ACCEPTÉE",
+            FicheState::Refused => "REFUSÉE",
+            FicheState::Comment => "COMMENTAIRE"
+        }
+    }
 }
 
 /**     JOB INFO STARTS HERE    **/
