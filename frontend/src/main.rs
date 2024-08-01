@@ -1,5 +1,7 @@
 use eframe::web_sys;
 
+use frontend::App;
+
 // When compiling to web using trunk:
 #[cfg(target_arch = "wasm32")]
 fn main() {

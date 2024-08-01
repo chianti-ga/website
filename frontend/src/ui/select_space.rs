@@ -76,7 +76,7 @@ impl eframe::App for SpacePanel {
                         let fiche_space_btn = Button::image_and_text(image, "");
 
                         if ui.add(fiche_space_btn).clicked() {
-                            SELECTED_SPACE.lock().unwrap().selected_space = Space::EficheSpace;
+                            SELECTED_SPACE.lock().unwrap().selected_space = Space::eFicheSpace;
                         }
                     });
                 });
