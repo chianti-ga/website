@@ -7,7 +7,7 @@ use egui::FontFamily::Proportional;
 use json_gettext::{get_text, JSONGetText, static_json_gettext_build};
 use lazy_static::lazy_static;
 
-use shared::user::Account;
+use shared::user::FrontAccount;
 
 use crate::ui::select_space::SpacePanel;
 use crate::ui::spaces::fiche_space::FicheSpace;
@@ -21,7 +21,7 @@ pub struct AuthInfo {
     pub auth_url: String,
     pub location_url: String,
     pub authenticated: bool,
-    pub account: Option<Account>,
+    pub account: Option<FrontAccount>,
 }
 impl Default for AuthInfo {
     fn default() -> Self {

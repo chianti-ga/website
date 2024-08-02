@@ -36,7 +36,7 @@ pub async fn auth(req: HttpRequest, session: Session, app_data: web::Data<AppDat
             update_account_discord(cookie.value(), app_data.dbclient.clone()).await;
             return actix_web::HttpResponse::Found()
                 .append_header((header::LOCATION, "/"))
-                .finish()
+                .finish();
         }
     }
     let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();

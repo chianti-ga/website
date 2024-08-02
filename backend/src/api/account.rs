@@ -1,18 +1,16 @@
 use actix_session::Session;
 use actix_web::{get, HttpRequest, HttpResponse, Responder, web};
-use actix_web::http::header::LOCATION;
 use mongodb::bson::doc;
 use mongodb::Collection;
-use serenity::futures::{StreamExt, TryStreamExt};
+use serenity::futures::TryStreamExt;
 
-use shared::user::{Account, FrontAccount};
+use shared::user::FrontAccount;
 
 use crate::AppData;
-use crate::utils::auth_utils::{is_auth_valid, update_account_discord};
+use crate::utils::auth_utils::is_auth_valid;
 
 #[get("/api/retrieve_accounts")]
 pub async fn retrieve_accounts(req: HttpRequest, session: Session, app_data: web::Data<AppData>) -> impl Responder {
-    println!("{:?}", req.cookies().unwrap());
     if let Some(cookie) = req.cookie("auth_id") {
         if is_auth_valid(cookie.clone().value(), app_data.dbclient.clone()).await {
             let accounts: Collection<FrontAccount> = app_data.dbclient.database("visualis-website").collection("account");
