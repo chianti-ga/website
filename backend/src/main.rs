@@ -1,11 +1,12 @@
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-
+use actix_cors::Cors;
 use actix_files::Files;
 use actix_session::config::CookieContentSecurity;
 use actix_session::SessionMiddleware;
 use actix_session::storage::CookieSessionStore;
 use actix_web::{App, get, HttpResponse, HttpServer, Responder};
 use actix_web::cookie::Key;
+use actix_web::http::header::HeaderName;
 use actix_web::middleware::Logger;
 use actix_web::rt::time;
 use actix_web::web::Data;
@@ -57,6 +58,13 @@ async fn main() -> Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
+            .wrap(Cors::default()
+                .allowed_origin("http://localhost:8080")
+                .allowed_origin("http://localhost:2828")
+                .allowed_methods(vec!["GET", "POST"])
+                .allow_any_header()
+                .max_age(None)
+            )
             .wrap({
                 SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
                     .cookie_secure(false)
