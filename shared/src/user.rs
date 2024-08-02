@@ -10,6 +10,7 @@ use crate::fiche_rp::FicheRP;
 pub struct Account {
     pub discord_user: User,
     pub discord_roles: Vec<String>,
+    pub auth_id: String,
     pub token: BasicTokenResponse,
     pub last_renewal: u64,
     pub fiches: Vec<FicheRP>,
@@ -17,9 +18,8 @@ pub struct Account {
     pub banned: bool,
 }
 
-#[cfg(target_arch = "wasm32")]
 #[derive(Serialize, Deserialize)]
-pub struct Account {
+pub struct FrontAccount {
     pub discord_user: User,
     pub discord_roles: Vec<String>,
     pub fiches: Vec<FicheRP>,
