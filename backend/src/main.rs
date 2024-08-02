@@ -23,7 +23,7 @@ use serenity::futures::{StreamExt, TryStreamExt};
 
 use shared::user::Account;
 
-use crate::api::account::retrieve_accounts;
+use crate::api::front::retrieve_accounts;
 use crate::api::oauth2::{auth, callback};
 use crate::api::webhook::{embed_webhook, text_webhook};
 use crate::utils::auth_utils::renew_token;
