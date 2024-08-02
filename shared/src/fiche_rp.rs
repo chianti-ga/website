@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::user::FrontAccount;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FicheRP {
     pub name: String,
     pub job: Job,
@@ -23,7 +23,7 @@ impl FicheRP {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FicheVersions {
     pub name: String,
     pub job: Job,
@@ -38,7 +38,7 @@ impl FicheVersions {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ReviewMessage {
     pub user: FrontAccount,
     pub content: String,
@@ -47,7 +47,7 @@ pub struct ReviewMessage {
     pub set_state: FicheState,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum FicheState {
     Waiting,
     RequestModification,
@@ -70,7 +70,7 @@ impl FicheState {
 }
 
 /**     JOB INFO STARTS HERE    **/
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Job {
     Security(SecurityRole),
     Science(ScienceRole),
@@ -91,7 +91,7 @@ impl Display for Job {
         }
     }
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ScienceRole {
     Assistant(ScienceLevel),
     Researcher(ScienceLevel),
@@ -106,7 +106,7 @@ impl Display for ScienceRole {
         }
     }
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ScienceLevel {
     Beginner,
     Confirmed,
@@ -121,7 +121,7 @@ impl Display for ScienceLevel {
         }
     }
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum SecurityRole {
     SecurityOfficier(SecurityLevel),
     TacticalAgent(SecurityLevel),
@@ -134,7 +134,7 @@ impl Display for SecurityRole {
         }
     }
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum SecurityLevel {
     Rct,
     Sdt,

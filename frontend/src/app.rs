@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use std::future::IntoFuture;
+use std::sync::{Arc, LockResult, Mutex, RwLock};
 
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
@@ -6,28 +7,23 @@ use egui::{Button, Color32, FontId, Image, RichText};
 use egui::FontFamily::Proportional;
 use json_gettext::{get_text, JSONGetText, static_json_gettext_build};
 use lazy_static::lazy_static;
-
+use log::info;
+use serde::{Deserialize, Serialize};
 use shared::user::FrontAccount;
-
+use crate::backend_handler::{authenticate, get_oath2_url, retrieve_accounts};
 use crate::ui::select_space::SpacePanel;
 use crate::ui::spaces::fiche_space::FicheSpace;
 
 pub struct App {
     pub location_url: String,
-    pub auth_info: AuthInfo,
 }
-
 pub struct AuthInfo {
-    pub auth_url: String,
-    pub location_url: String,
     pub authenticated: bool,
     pub account: Option<FrontAccount>,
 }
 impl Default for AuthInfo {
     fn default() -> Self {
         AuthInfo {
-            auth_url: "".to_string(),
-            location_url: "".to_string(),
             authenticated: false,
             account: None,
         }
@@ -55,7 +51,8 @@ pub enum Space {
 
 lazy_static! {
     pub static ref SELECTED_SPACE:Arc<Mutex<SelectedSpace>> = Arc::new(Mutex::new(SelectedSpace::default()));
-    pub static ref get_text_ctx:Arc<JSONGetText<'static>>=Arc::new(static_json_gettext_build!("fr_FR";"fr_FR" => "assets/langs/fr_FR.json").unwrap());
+    pub static ref GET_TEXT_CTX:Arc<JSONGetText<'static>>=Arc::new(static_json_gettext_build!("fr_FR";"fr_FR" => "assets/langs/fr_FR.json").unwrap());
+    pub static ref AUTH_INFO:Arc<RwLock<AuthInfo>> = Arc::new(RwLock::new(AuthInfo::default()));
 }
 
 impl App {
@@ -81,29 +78,42 @@ impl App {
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
+        authenticate(AUTH_INFO.clone());
+
         Self {
             location_url: cc.integration_info.web_info.location.url.clone(),
-            auth_info: Default::default(),
         }
+
     }
 }
+
 
 impl eframe::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        if !self.auth_info.authenticated {
+        let binding = AUTH_INFO.clone();
+        let auth_info = binding.read().unwrap();
+
+        if !auth_info.authenticated {
             egui::CentralPanel::default().show(ctx, |ui| {
-                ui.vertical_centered(move |ui| {
-                    ui.label(RichText::new(get_text!(get_text_ctx, "auth.text").unwrap().to_string()).text_style(TextStyle::Heading));
-                    let discord_button = Button::image_and_text(Image::new(format!("{}discord_steam_link.svg", &self.location_url)).fit_to_original_size(0.75).maintain_aspect_ratio(true), get_text!(get_text_ctx, "auth.btn.text").unwrap().to_string());
+                ui.vertical_centered(|ui| {
+                    ui.label(RichText::new(get_text!(GET_TEXT_CTX, "auth.text").unwrap().to_string()).text_style(TextStyle::Heading));
+                    let discord_button = Button::image_and_text(Image::new(format!("{}discord_steam_link.svg", &self.location_url)).fit_to_original_size(0.75).maintain_aspect_ratio(true), get_text!(GET_TEXT_CTX, "auth.btn.text").unwrap().to_string());
                     if ui.add(discord_button).clicked() {
-                        self.auth_info.authenticated = true;
+                        web_sys::window().expect("no global `window` exists").location().set_href(&*get_oath2_url()).expect("Can't redirect");
                     };
                 });
             });
         } else {
             egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-                egui::menu::bar(ui, |ui| {});
+                egui::menu::bar(ui, |ui| {
+                    match AUTH_INFO.clone().read() {
+                        Ok(auth_info) => {
+                            ui.label(auth_info.account.clone().unwrap().discord_user.username);
+                        }
+                        Err(_) => {}
+                    };
+                });
             });
             let selected_space: Space = SELECTED_SPACE.lock().unwrap().selected_space;
 

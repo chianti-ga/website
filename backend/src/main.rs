@@ -24,7 +24,7 @@ use serenity::futures::{StreamExt, TryStreamExt};
 
 use shared::user::Account;
 
-use crate::api::front::retrieve_accounts;
+use crate::api::front::{retrieve_accounts, retrieve_auth_account};
 use crate::api::oauth2::{auth, callback};
 use crate::api::webhook::{embed_webhook, text_webhook};
 use crate::utils::auth_utils::renew_token;
@@ -76,6 +76,7 @@ async fn main() -> Result<()> {
             .service(auth)
             .service(callback)
             .service(retrieve_accounts)
+            .service(retrieve_auth_account)
             .service(Files::new("/", "dist").index_file("index.html"))
             .app_data(app_data.clone())
     })

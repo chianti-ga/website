@@ -31,15 +31,18 @@ struct OAuth2Callback {
 }
 #[get("/api/oauth2/auth/")]
 pub async fn auth(req: HttpRequest, session: Session, app_data: web::Data<AppData>) -> impl Responder {
+    let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
+
     if let Some(cookie) = req.cookie("auth_id") {
         if is_auth_valid(cookie.value(), app_data.dbclient.clone()).await {
+
             update_account_discord(cookie.value(), app_data.dbclient.clone()).await;
             return actix_web::HttpResponse::Found()
-                .append_header((header::LOCATION, "/"))
+                .append_header((header::LOCATION, oauth2_info.redirect_url_egui.clone()))
                 .finish();
         }
     }
-    let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
+
     //IMPORTANT: The urls should NOT have "/" appended to the end, the lib will crash if so
     let oauth_client =
         BasicClient::new(
@@ -165,8 +168,10 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
             auth_cookie.set_path("/");
             auth_cookie.set_expires(OffsetDateTime::now_utc() + Duration::weeks(2));
 
+            let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
+
             actix_web::HttpResponse::Found()
-                .append_header((header::LOCATION, "/"))
+                .append_header((header::LOCATION, oauth2_info.redirect_url_egui.clone()))
                 .cookie(auth_cookie)
                 .finish()
         }

@@ -9,7 +9,6 @@ eframe = { version = "0.28.1", features = ["default"] }
 # For image support:
 egui_extras = { version = "0.28.1", features = ["default", "image", "chrono", "all_loaders"] }
 image = { version = "0.25.1", features = ["default"] }
-ehttp = { version = "0.5.0", features = ["json"] }
 env_logger = "0.11.3"
 lazy_static = "1.4.0"
 log = "0.4.21"
@@ -19,10 +18,11 @@ json-gettext = "4.0.10"
 shared = { version = "0.1.0", path = "../shared" }
 chrono = "0.4.38"
 egui_commonmark = { version = "0.17.0", features = ["default", "better_syntax_highlighting", "load-images", "svg"] }
-#shared = { version = "0.1.0", path = "../shared" }
+ehttp = { version = "0.5.0", features = ["json"] }
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-cookies = "0.2.1"
 getrandom = { version = "0.2", features = ["js"] }
 wasm-timer = "0.2.5"
 wasm-bindgen-futures = { version = "0.4.42" }

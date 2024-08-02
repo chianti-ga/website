@@ -23,5 +23,6 @@ pub struct Oauth2Client {
     pub client_secret: String,
     pub auth_url: String,
     pub redirect_url: String,
+    pub redirect_url_egui: String,
     pub token_url: String,
 }
