@@ -12,10 +12,12 @@ use serde_json::Value;
 use shared::discord::{DiscordAuthorizationInformation, GuildMember};
 use shared::user::Account;
 
-pub async fn is_auth_valid(user_token: &str, client: mongodb::Client) -> bool {
+use crate::CONFIG;
+
+pub async fn is_auth_valid(auth_id: &str, client: mongodb::Client) -> bool {
     let accounts: Collection<Account> = client.database("visualis-website").collection("account");
     let query = doc! {
-        "token.access_token" : user_token
+        "auth_id" : auth_id
     };
     accounts.count_documents(query).await.unwrap() > 0
 }
@@ -27,27 +29,42 @@ pub async fn is_user_registered(discord_id: &String, client: mongodb::Client) ->
     };
     accounts.count_documents(query).await.unwrap() > 0
 }
-pub async fn update_token(discord_id: &String, token_response: BasicTokenResponse, client: mongodb::Client) {
+pub async fn update_token(auth_id: &str, discord_id: &String, token_response: BasicTokenResponse, client: mongodb::Client) {
     let accounts: Collection<Account> = client.database("visualis-website").collection("account");
     let query = doc! {
         "discord_user.id" : discord_id
     };
-    accounts.find_one(query.clone()).await.expect("Can't find account to update").expect("Can't retrieve account document");
-
     let update_doc = doc! {
         "$set": {
             "token": to_bson(&token_response).unwrap(),
         }
     };
     accounts.update_one(query, update_doc).await.expect("Failed to update account for token change");
-    update_account_discord(token_response.access_token().secret(), client).await;
+    update_account_discord(auth_id, client).await;
 }
 
-pub async fn update_account_discord(token: &str, client: mongodb::Client) {
+pub async fn update_auth_id(discord_id: &String, auth_id: &String, client: mongodb::Client) {
+    let accounts: Collection<Account> = client.database("visualis-website").collection("account");
+    let query = doc! {
+        "discord_user.id" : discord_id
+    };
+    let update_doc = doc! {
+        "$set": {
+            "auth_id": to_bson(&auth_id).unwrap(),
+        }
+    };
+    accounts.update_one(query, update_doc).await.expect("Failed to update auth_id for account");
+}
+
+pub async fn update_account_discord(auth_id: &str, client: mongodb::Client) {
     let accounts: Collection<Account> = client.database("visualis-website").collection("account");
     let query: Document = doc! {
-        "token.access_token" : token
+        "auth_id" : auth_id
     };
+
+    let account: Account = accounts.find_one(query.clone()).await.expect("Can't retrieve account to update").unwrap();
+    let token: &String = account.token.access_token().secret();
+
     let response: Response = reqwest::Client::new()
         .get("https://discord.com/api/oauth2/@me")
         .bearer_auth(token)
