@@ -14,7 +14,7 @@ use config::{Config, File};
 use dashmap::DashMap;
 use env_logger::Env;
 use lazy_static::lazy_static;
-use log::info;
+use log::{error, info};
 use mongodb::{Collection, Cursor};
 use mongodb::bson::{bson, doc, Document};
 use oauth2::{AuthUrl, Client, ClientId, ClientSecret, RedirectUrl, StandardRevocableToken, TokenResponse, TokenUrl};
@@ -23,6 +23,7 @@ use serenity::futures::{StreamExt, TryStreamExt};
 
 use shared::user::Account;
 
+use crate::api::account::retrieve_accounts;
 use crate::api::oauth2::{auth, callback};
 use crate::api::webhook::{embed_webhook, text_webhook};
 use crate::utils::auth_utils::renew_token;
@@ -45,13 +46,46 @@ async fn main() -> Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     let dbclient: mongodb::Client = init_mongo().await;
+
     let app_data = Data::new(AppData {
         client_map: DashMap::new(),
         dbclient: dbclient.clone(),
     });
 
+    update_token_thread(dbclient.clone()).await;
+
+    HttpServer::new(move || {
+        App::new()
+            .wrap(Logger::default())
+            .wrap({
+                SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
+                    .cookie_secure(false)
+                    .cookie_content_security(CookieContentSecurity::Private)
+                    .build()
+            })
+            .service(text_webhook)
+            .service(embed_webhook)
+            .service(auth)
+            .service(callback)
+            .service(retrieve_accounts)
+            .service(Files::new("/", "dist").index_file("index.html"))
+            .app_data(app_data.clone())
+    })
+        .bind(("127.0.0.1", CONFIG.port))
+        .map_err(anyhow::Error::msg)?
+        .run()
+        .await?;
+    Ok(())
+}
+
+pub async fn init_mongo() -> mongodb::Client {
+    let uri: &String = &CONFIG.mongo_db_uri;
+    mongodb::Client::with_uri_str(uri).await.expect("[ERROR] Can't connect to mongodb server!")
+}
+
+pub async fn update_token_thread(dbclient: mongodb::Client) {
     actix_rt::spawn(async move {
-        let mut interval = time::interval(Duration::from_secs(3600)); // check every hour
+        let mut interval = time::interval(Duration::from_secs(3600)); // check every hour (3600s)
         let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
         //IMPORTANT: The urls should NOT have "/" appended to the end, the lib will crash if so
         let oauth_client =
@@ -72,37 +106,9 @@ async fn main() -> Result<()> {
                 let time_passed_since_renew = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
                 if time_passed_since_renew <= 86400 { //renew when one day or less is left
                     renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
-                    info!("Renewing token for {}({})", account.discord_user.username, account.discord_user.id)
+                    info!("Renewing token for {}({})", account.discord_user.username, account.discord_user.id);
                 }
             }
         }
     });
-
-    HttpServer::new(move || {
-        App::new()
-            .wrap(Logger::default())
-            .wrap({
-                SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
-                    .cookie_secure(false)
-                    .cookie_content_security(CookieContentSecurity::Private)
-                    .build()
-            })
-            .service(text_webhook)
-            .service(embed_webhook)
-            .service(auth)
-            .service(callback)
-            .service(Files::new("/", "dist").index_file("index.html"))
-            .app_data(app_data.clone())
-    })
-        .bind(("127.0.0.1", CONFIG.port))
-        .map_err(anyhow::Error::msg)?
-        .run()
-        .await?;
-
-    Ok(())
-}
-
-pub async fn init_mongo() -> mongodb::Client {
-    let uri: &String = &CONFIG.mongo_db_uri;
-    mongodb::Client::with_uri_str(uri).await.expect("[ERROR] Can't connect to mongodb server!")
 }
