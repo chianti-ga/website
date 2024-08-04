@@ -40,6 +40,7 @@ lazy_static! {
 struct AppData {
     client_map: DashMap<String, Client<BasicErrorResponse, BasicTokenResponse, BasicTokenType, BasicTokenIntrospectionResponse, StandardRevocableToken, BasicRevocationErrorResponse>>,
     dbclient: mongodb::Client,
+    reqwest_client: reqwest::Client,
 }
 
 #[actix_web::main]
@@ -51,6 +52,8 @@ async fn main() -> Result<()> {
     let app_data = Data::new(AppData {
         client_map: DashMap::new(),
         dbclient: dbclient.clone(),
+        reqwest_client: reqwest::Client::new()
+
     });
 
     update_token_thread(dbclient.clone()).await;

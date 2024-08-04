@@ -29,14 +29,13 @@ struct OAuth2Callback {
     pub code: String,
     pub state: String,
 }
-#[get("/api/oauth2/auth/")]
+#[get("/api/oauth2/auth")]
 pub async fn auth(req: HttpRequest, session: Session, app_data: web::Data<AppData>) -> impl Responder {
     let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
 
     if let Some(cookie) = req.cookie("auth_id") {
         if is_auth_valid(cookie.value(), app_data.dbclient.clone()).await {
-
-            update_account_discord(cookie.value(), app_data.dbclient.clone()).await;
+            update_account_discord(cookie.value(), app_data.dbclient.clone(), &app_data.reqwest_client).await;
             return actix_web::HttpResponse::Found()
                 .append_header((header::LOCATION, oauth2_info.redirect_url_egui.clone()))
                 .finish();
@@ -89,14 +88,14 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
         return actix_web::HttpResponse::BadRequest().body("bad request");
     }
 
-    let client = app_data.client_map.get(&client_id_value).unwrap();
+    let client_id = app_data.client_map.get(&client_id_value).unwrap();
     let code: String = callback_data.code.clone();
 
-    match client.value().exchange_code(AuthorizationCode::new(code))
-        .set_pkce_verifier(PkceCodeVerifier::new(pkce_verifier_value))
-        .request_async(async_http_client).await {
+    match client_id.value().exchange_code(AuthorizationCode::new(code))
+                   .set_pkce_verifier(PkceCodeVerifier::new(pkce_verifier_value))
+                   .request_async(async_http_client).await {
         Ok(token_response) => {
-            let discord_autho_response: Response = reqwest::Client::new()
+            let discord_autho_response: Response = app_data.reqwest_client
                 .get("https://discord.com/api/oauth2/@me")
                 .bearer_auth(token_response.clone().access_token().secret())
                 .send()
@@ -118,13 +117,13 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
                 auth_cookie.set_path("/");
                 auth_cookie.set_same_site(SameSite::Strict);
 
-                update_token(&auth_id, &authorization_information.user.id, token_response.clone(), app_data.dbclient.clone()).await;
+                update_token(&auth_id, &authorization_information.user.id, token_response.clone(), app_data.dbclient.clone(), &app_data.reqwest_client).await;
                 info!("Token updated for {}({})",authorization_information.user.username.clone(), authorization_information.user.id.clone());
 
                 return actix_web::HttpResponse::Ok().cookie(auth_cookie).body("");
             }
 
-            let discord_guild_member_response: Response = reqwest::Client::new()
+            let discord_guild_member_response: Response = app_data.reqwest_client
                 .get("https://discord.com/api/users/@me/guilds/1031296063056924714/member")
                 .bearer_auth(token_response.clone().access_token().secret())
                 .send()
@@ -170,8 +169,8 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
 
             let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
 
-            actix_web::HttpResponse::Found()
-                .append_header((header::LOCATION, oauth2_info.redirect_url_egui.clone()))
+            actix_web::HttpResponse::Ok()
+                .append_header((header::LOCATION, "/"))
                 .cookie(auth_cookie)
                 .finish()
         }
