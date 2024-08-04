@@ -1,10 +1,12 @@
+use std::fmt::format;
 use std::future::IntoFuture;
-use std::sync::{Arc, LockResult, Mutex, RwLock};
+use std::sync::{Arc, LockResult, Mutex, RwLock, RwLockReadGuard};
 
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
-use egui::{Button, Color32, FontId, Image, RichText};
+use egui::{Align, Button, Color32, FontId, Image, Layout, RichText};
 use egui::FontFamily::Proportional;
+use egui::style::DebugOptions;
 use json_gettext::{get_text, JSONGetText, static_json_gettext_build};
 use lazy_static::lazy_static;
 use log::info;
@@ -16,6 +18,7 @@ use crate::ui::spaces::fiche_space::FicheSpace;
 
 pub struct App {
     pub location_url: String,
+    pub is_ui_debug: bool,
 }
 pub struct AuthInfo {
     pub authenticated: bool,
@@ -82,6 +85,7 @@ impl App {
 
         Self {
             location_url: cc.integration_info.web_info.location.url.clone(),
+            is_ui_debug: false
         }
 
     }
@@ -91,14 +95,33 @@ impl App {
 impl eframe::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let binding = AUTH_INFO.clone();
-        let auth_info = binding.read().unwrap();
+        if self.is_ui_debug {
+            ctx.style_mut(move |style| {
+                style.debug = DebugOptions {
+                    debug_on_hover: true,
+                    debug_on_hover_with_all_modifiers: true,
+                    hover_shows_next: true,
+                    show_expand_width: true,
+                    show_expand_height: true,
+                    show_resize: true,
+                    show_interactive_widgets: true,
+                    show_widget_hits: true,
+                };
+            });
+        } else {
+            ctx.style_mut(move |style| {
+                style.debug = DebugOptions::default()
+            });
+        }
+
+        let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+        let auth_info: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
 
         if !auth_info.authenticated {
             egui::CentralPanel::default().show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
-                    ui.label(RichText::new(get_text!(GET_TEXT_CTX, "auth.text").unwrap().to_string()).text_style(TextStyle::Heading));
-                    let discord_button = Button::image_and_text(Image::new(format!("{}discord_steam_link.svg", &self.location_url)).fit_to_original_size(0.75).maintain_aspect_ratio(true), get_text!(GET_TEXT_CTX, "auth.btn.text").unwrap().to_string());
+                    ui.label(RichText::new(get_string("auth.text")).text_style(TextStyle::Heading));
+                    let discord_button = Button::image_and_text(Image::new(format!("{}discord_steam_link.svg", &self.location_url)).fit_to_original_size(0.75).maintain_aspect_ratio(true), get_string("auth.btn.text").to_string());
                     if ui.add(discord_button).clicked() {
                         web_sys::window().expect("no global `window` exists").location().set_href(&*get_oath2_url()).expect("Can't redirect");
                     };
@@ -107,12 +130,24 @@ impl eframe::App for App {
         } else {
             egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
-                    match AUTH_INFO.clone().read() {
-                        Ok(auth_info) => {
-                            ui.label(auth_info.account.clone().unwrap().discord_user.username);
-                        }
-                        Err(_) => {}
-                    };
+                    ui.horizontal(|ui| {
+                        match AUTH_INFO.clone().read() {
+                            Ok(auth_info) => {
+                                let account: FrontAccount = auth_info.account.clone().unwrap();
+                                if ui.button(get_string("nav.btn.home")).clicked() {
+                                    SELECTED_SPACE.lock().unwrap().selected_space = Space::eSelection;
+                                };
+                                if ui.button(get_string("nav.btn.ficherp")).clicked() {
+                                    SELECTED_SPACE.lock().unwrap().selected_space = Space::eFicheSpace;
+                                };
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    ui.label(format!("Connecté en tant que : {} ({})", account.discord_user.username, account.discord_user.id));
+                                    ui.toggle_value(&mut self.is_ui_debug, "debug")
+                                });
+                            }
+                            Err(_) => {}
+                        };
+                    })
                 });
             });
             let selected_space: Space = SELECTED_SPACE.lock().unwrap().selected_space;
@@ -134,6 +169,10 @@ impl eframe::App for App {
             });
         }
     }
+}
+
+pub fn get_string(query: &str) -> String {
+    get_text!(GET_TEXT_CTX, query).unwrap().to_string()
 }
 
 pub fn image_resolver(image_name: &str) -> String {

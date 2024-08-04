@@ -1,4 +1,10 @@
 {
   "auth.text": "Merci de vous connecter pour acceder à l'interface",
-  "auth.btn.text": "Connexion via Discord et Steam"
+  "auth.btn.text": "Connexion via Discord et Steam",
+  "nav.btn.home": "Connexion via Discord et Steam",
+  "nav.btn.report": "Rapports",
+  "nav.btn.lore": "Fiche de lore",
+  "nav.btn.ficherp": "Fiche RP"
+
+
 }
