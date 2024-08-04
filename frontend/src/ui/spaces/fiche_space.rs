@@ -73,19 +73,17 @@ Lors de la réouverture, DuComposte a repris ses expériences habituelles, notam
 
             ui.columns(3, |mut columns| {
                 columns[0].with_layout(Layout::top_down(Align::Center), |ui| {
-                    ui.centered_and_justified(|ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            ui.vertical(|ui| {
-                                egui::menu::bar(ui, |ui| {
-                                    //TODO: FILTERING
-                                });
-
-                                for i in 0..50 {
-                                    frame.show(ui, |ui| {
-                                        ficherp_bubble(ui, &ficherp, &user);
-                                    });
-                                }
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            egui::menu::bar(ui, |ui| {
+                                //TODO: FILTERING
                             });
+
+                            for i in 0..50 {
+                                frame.show(ui, |ui| {
+                                    ficherp_bubble(ui, &ficherp, &user);
+                                });
+                            }
                         });
                     });
                 });
@@ -103,7 +101,9 @@ Lors de la réouverture, DuComposte a repris ses expériences habituelles, notam
                     });
                 });
                 columns[2].with_layout(Layout::top_down(Align::Center), |ui| {
-                    ui.centered_and_justified(|ui| {});
+                    ui.centered_and_justified(|ui| {
+                        ui.label("TESTTTTT")
+                    });
                 });
             });
         });

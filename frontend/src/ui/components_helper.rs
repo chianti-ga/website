@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use eframe::emath::Align;
-use egui::{FontSelection, Image, InnerResponse, RichText, TextFormat, TextStyle};
+use egui::{Direction, FontSelection, Image, InnerResponse, Layout, RichText, TextFormat, TextStyle};
 use egui::text::LayoutJob;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 
@@ -11,7 +11,7 @@ use shared::discord::User;
 use shared::fiche_rp::{FicheRP, FicheState};
 
 use crate::app::image_resolver;
-
+use crate::backend_handler::authenticate;
 /*
 pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp:&FicheRP, user:&User) -> InnerResponse<Response> {
     let avatar_url = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, user.avatar);
@@ -44,14 +44,15 @@ pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Inne
 
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
     ui.vertical(|ui| {
+
         ui.horizontal(|ui| {
             ui.add(avatar_image);
-            ui.add_space(10.0);
+            ui.add_space(ui.min_rect().min.x);
             ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
-            ui.add_space(10.0);
+            ui.add_space(ui.min_rect().min.x);
             state_badge(ui, &ficherp.state);
-            ui.add_space(10.0);
         });
+
         ui.separator();
         let mut layout_job = LayoutJob::default();
 
@@ -78,7 +79,6 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
             ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
             ui.add_space(10.0);
             state_badge(ui, &ficherp.state);
-            ui.add_space(10.0);
         });
 
         ui.separator();
@@ -111,7 +111,7 @@ pub fn state_badge(ui: &mut egui::Ui, state: &FicheState) {
         FicheState::Refused => "refused.svg",
         FicheState::Comment => "comment.svg"
     };
-    let badge: Image = Image::new(image_resolver(img_to_load)).fit_to_original_size(1.0).maintain_aspect_ratio(true);
+    let badge: Image = Image::new(image_resolver(img_to_load)).fit_to_original_size(1.0).shrink_to_fit().maintain_aspect_ratio(true);
     ui.vertical(|ui| {
         ui.add(badge);
     });
