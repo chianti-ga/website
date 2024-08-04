@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LockResult, RwLock};
+
 use ehttp::{Mode, Request};
 use lazy_static::lazy_static;
 use log::info;
+
 use shared::user::FrontAccount;
+
 use crate::app::AuthInfo;
 
 pub const IS_DEBUG: bool = cfg!(debug_assertions);

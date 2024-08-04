@@ -1,6 +1,5 @@
-use std::fmt::format;
 use std::future::IntoFuture;
-use std::sync::{Arc, LockResult, Mutex, RwLock, RwLockReadGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
 
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
@@ -9,10 +8,10 @@ use egui::FontFamily::Proportional;
 use egui::style::DebugOptions;
 use json_gettext::{get_text, JSONGetText, static_json_gettext_build};
 use lazy_static::lazy_static;
-use log::info;
-use serde::{Deserialize, Serialize};
+
 use shared::user::FrontAccount;
-use crate::backend_handler::{authenticate, get_oath2_url, retrieve_accounts};
+
+use crate::backend_handler::{authenticate, get_oath2_url};
 use crate::ui::select_space::SpacePanel;
 use crate::ui::spaces::fiche_space::FicheSpace;
 
@@ -85,12 +84,10 @@ impl App {
 
         Self {
             location_url: cc.integration_info.web_info.location.url.clone(),
-            is_ui_debug: false
+            is_ui_debug: false,
         }
-
     }
 }
-
 
 impl eframe::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
