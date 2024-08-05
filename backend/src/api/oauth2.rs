@@ -165,7 +165,8 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
             auth_cookie.set_domain(&CONFIG.domain);
             auth_cookie.set_same_site(SameSite::Strict);
             auth_cookie.set_path("/");
-            auth_cookie.set_expires(OffsetDateTime::now_utc() + Duration::weeks(2));
+            auth_cookie.set_expires(OffsetDateTime::now_utc() + Duration::weeks(4));
+            auth_cookie.set_max_age(Duration::weeks(4));
 
             let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
 
