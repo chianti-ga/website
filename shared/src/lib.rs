@@ -2,6 +2,7 @@ pub mod fiche_rp;
 pub mod research_report;
 pub mod user;
 pub mod discord;
+pub mod permissions;
 
 #[cfg(test)]
 mod tests {

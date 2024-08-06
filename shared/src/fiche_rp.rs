@@ -40,7 +40,7 @@ impl FicheVersions {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ReviewMessage {
-    pub user: FrontAccount,
+    pub account: FrontAccount,
     pub content: String,
     pub date: u128,
     pub is_private: bool,
