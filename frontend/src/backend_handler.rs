@@ -7,7 +7,7 @@ use log::info;
 
 use shared::user::FrontAccount;
 
-use crate::app::AuthInfo;
+use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo};
 
 pub const IS_DEBUG: bool = cfg!(debug_assertions);
 
@@ -16,23 +16,23 @@ pub fn get_oath2_url() -> String {
     api_url
 }
 
-pub fn authenticate(auth_info: Arc<RwLock<AuthInfo>>) {
+pub fn authenticate() {
     if let Some(auth_id) = wasm_cookies::get("auth_id") {
         let api_url: String = format!("{}api/front/retrieve_auth_account?auth_id={}", get_api_path(), auth_id.unwrap());
         let mut request: Request = Request::get(api_url);
-
         request.mode = Mode::Cors;
         ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
             let mut result = result.unwrap();
             if result.status == 200 {
                 let account: FrontAccount = result.clone().json().unwrap();
-                match auth_info.clone().write() {
+                match AUTH_INFO.clone().write() {
                     Ok(mut lock) => {
                         lock.account = Option::from(account);
                         lock.authenticated = true;
                     }
                     Err(_) => {}
                 };
+                retrieve_accounts()
             }
         });
     }
@@ -44,9 +44,17 @@ pub fn retrieve_accounts() {
     let mut request: Request = Request::get(api_url);
 
     request.mode = Mode::Cors;
+
     ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
-        if result.clone().unwrap().status == 200 {
-            let mut accounts: Vec<FrontAccount> = result.clone().unwrap().json().unwrap();
+        let mut result = result.unwrap();
+        if result.status == 200 {
+            let accounts: Vec<FrontAccount> = result.clone().json().unwrap();
+            match ALL_ACCOUNTS.clone().write() {
+                Ok(mut lock) => {
+                    *lock = accounts;
+                }
+                Err(_) => {}
+            };
         }
     });
 }

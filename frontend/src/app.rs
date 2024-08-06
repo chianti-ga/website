@@ -1,11 +1,12 @@
 use std::future::IntoFuture;
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
+use std::sync::{Arc, LockResult, Mutex, RwLock, RwLockReadGuard};
 
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
 use egui::{Align, Button, Color32, FontId, Image, Layout, RichText};
 use egui::FontFamily::Proportional;
-use egui::style::DebugOptions;
+use egui::style::{DebugOptions, ScrollStyle};
+use egui_commonmark::CommonMarkCache;
 use json_gettext::{get_text, JSONGetText, static_json_gettext_build};
 use lazy_static::lazy_static;
 
@@ -18,7 +19,12 @@ use crate::ui::spaces::fiche_space::FicheSpace;
 pub struct App {
     pub location_url: String,
     pub is_ui_debug: bool,
+    // PANELS
+    pub fiche_space: FicheSpace,
+    pub space_panel: SpacePanel
+
 }
+#[derive(Clone)]
 pub struct AuthInfo {
     pub authenticated: bool,
     pub account: Option<FrontAccount>,
@@ -55,6 +61,7 @@ lazy_static! {
     pub static ref SELECTED_SPACE:Arc<Mutex<SelectedSpace>> = Arc::new(Mutex::new(SelectedSpace::default()));
     pub static ref GET_TEXT_CTX:Arc<JSONGetText<'static>>=Arc::new(static_json_gettext_build!("fr_FR";"fr_FR" => "assets/langs/fr_FR.json").unwrap());
     pub static ref AUTH_INFO:Arc<RwLock<AuthInfo>> = Arc::new(RwLock::new(AuthInfo::default()));
+    pub static ref ALL_ACCOUNTS:Arc<RwLock<Vec<FrontAccount>>> = Arc::new(RwLock::new(vec![]));
 }
 
 impl App {
@@ -76,15 +83,23 @@ impl App {
         };*/
         style.text_styles.insert(TextStyle::Name("heading2".into()), FontId::new(16.0, Proportional));
         style.text_styles.insert(TextStyle::Name("heading3".into()), FontId::new(14.0, Proportional));
+        style.spacing.scroll = ScrollStyle::solid();
         cc.egui_ctx.set_style(Arc::new(style));
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
-        authenticate(AUTH_INFO.clone());
+        authenticate();
 
         Self {
             location_url: cc.integration_info.web_info.location.url.clone(),
             is_ui_debug: false,
+            fiche_space: FicheSpace {
+                common_mark_cache: Arc::new(RwLock::new(CommonMarkCache::default())),
+                selected_fiche_account: None,
+                new_fiche: None,
+                preview_fiche: false,
+            },
+            space_panel: SpacePanel::new(),
         }
     }
 }
@@ -111,8 +126,8 @@ impl eframe::App for App {
             });
         }
 
-        let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
-        let auth_info: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
+        let binding_auth_info: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+        let auth_info: RwLockReadGuard<AuthInfo> = binding_auth_info.read().unwrap();
 
         if !auth_info.authenticated {
             egui::CentralPanel::default().show(ctx, |ui| {
@@ -148,12 +163,11 @@ impl eframe::App for App {
                 });
             });
             let selected_space: Space = SELECTED_SPACE.lock().unwrap().selected_space;
-
             match selected_space {
-                Space::eSelection => SpacePanel::new(self.location_url.clone()).update(ctx, frame),
+                Space::eSelection => self.space_panel.update(ctx, frame),
                 Space::eSpaceSelection => {}
                 Space::eAdminSpace => {}
-                Space::eFicheSpace => FicheSpace::new().update(ctx, frame),
+                Space::eFicheSpace => self.fiche_space.update(ctx, frame),
                 Space::eScienceSpace => {}
                 Space::eSecuritySpace => {}
             }
@@ -176,6 +190,7 @@ pub fn image_resolver(image_name: &str) -> String {
     let mut path: String = web_sys::window()
         .expect("no global `window` exists")
         .location().href().expect("should have a href");
+    path.push_str("app_img/");
     path.push_str(image_name);
     path
 }

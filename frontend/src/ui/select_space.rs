@@ -4,13 +4,10 @@ use egui::Button;
 
 use crate::app::{image_resolver, SELECTED_SPACE, Space};
 
-pub struct SpacePanel {
-    location_url: String,
-}
+pub struct SpacePanel {}
 impl SpacePanel {
-    pub fn new(location_url: String) -> Self {
+    pub fn new() -> Self {
         SpacePanel {
-            location_url,
         }
     }
 }

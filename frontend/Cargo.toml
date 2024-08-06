@@ -19,6 +19,7 @@ shared = { version = "0.1.0", path = "../shared" }
 chrono = "0.4.38"
 egui_commonmark = { version = "0.17.0", features = ["default", "better_syntax_highlighting", "load-images", "svg"] }
 ehttp = { version = "0.5.0", features = ["json"] }
+strum = { version = "0.26.3", features = ["derive"] }
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -31,3 +32,6 @@ web-sys = { version = "0.3.69", features = [] }
 [profile.release]
 lto = true
 opt-level = 3
+
+[profile.dev]
+opt-level = 2 # fast and small wasm
