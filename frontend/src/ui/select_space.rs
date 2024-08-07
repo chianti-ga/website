@@ -7,8 +7,7 @@ use crate::app::{image_resolver, SELECTED_SPACE, Space};
 pub struct SpacePanel {}
 impl SpacePanel {
     pub fn new() -> Self {
-        SpacePanel {
-        }
+        SpacePanel {}
     }
 }
 

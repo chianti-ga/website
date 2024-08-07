@@ -1,5 +1,5 @@
 use std::future::IntoFuture;
-use std::sync::{Arc, LockResult, Mutex, RwLock, RwLockReadGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
 
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
@@ -21,8 +21,7 @@ pub struct App {
     pub is_ui_debug: bool,
     // PANELS
     pub fiche_space: FicheSpace,
-    pub space_panel: SpacePanel
-
+    pub space_panel: SpacePanel,
 }
 #[derive(Clone)]
 pub struct AuthInfo {
@@ -96,8 +95,11 @@ impl App {
             fiche_space: FicheSpace {
                 common_mark_cache: Arc::new(RwLock::new(CommonMarkCache::default())),
                 selected_fiche_account: None,
+                selected_fiche_account_version: None,
                 new_fiche: None,
                 preview_fiche: false,
+                review_message: None,
+                writing_message: false,
             },
             space_panel: SpacePanel::new(),
         }
@@ -183,7 +185,10 @@ impl eframe::App for App {
 }
 
 pub fn get_string(query: &str) -> String {
-    get_text!(GET_TEXT_CTX, query).unwrap().to_string()
+    match get_text!(GET_TEXT_CTX, query) {
+        None => query.to_string(),
+        Some(text) => text.to_string()
+    }
 }
 
 pub fn image_resolver(image_name: &str) -> String {

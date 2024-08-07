@@ -1,11 +1,11 @@
-pub mod permissions_util;
+use eframe::web_sys;
+
 pub use app::App;
 
 mod app;
 mod backend_handler;
 mod ui;
 
-use eframe::web_sys;
 // When compiling to web using trunk:
 #[cfg(target_arch = "wasm32")]
 fn main() {

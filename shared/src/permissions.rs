@@ -1,26 +1,41 @@
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
-enum DiscordRole {
+#[derive(Clone, PartialEq, Eq)]
+pub enum DiscordRole {
     Admin,
     Moderator,
     LeadScenarist,
     Scenarist,
     Skitou,
+    Unknown
 }
 
 impl DiscordRole {
     // Function to get the role ID as a string
-    fn role_id(&self) -> &str {
+    pub fn role_id(&self) -> &str {
         match self {
             DiscordRole::Admin => "1031296249254658138", // TA role
             DiscordRole::Moderator => "1259573584767090699", //Gm mod
             DiscordRole::LeadScenarist => "1143632282926727328", // Resp scenarist
             DiscordRole::Scenarist => "1143509784591605841", // scenarist
-            DiscordRole::Skitou => "374283393799553036", // :D
+            DiscordRole::Skitou => "374283393799553036", // not a role id but its fine :D
+            _ => "none"
         }
     }
 
-    fn role_summary(&self) -> &str {
+    pub fn from_role_id(role_id: &str) -> Option<Self> {
+        match role_id {
+            "1031296249254658138" => Some(DiscordRole::Admin),
+            "1259573584767090699" => Some(DiscordRole::Moderator),
+            "1143632282926727328" => Some(DiscordRole::LeadScenarist),
+            "1143509784591605841" => Some(DiscordRole::Scenarist),
+            "374283393799553036" => Some(DiscordRole::Skitou),
+            _ => None,
+        }
+    }
+
+    pub fn role_summary(&self) -> &str {
         match self {
             DiscordRole::Admin => "Cette personne est un administrateur.",
             DiscordRole::Moderator => "Cette personne est chargée d’appliquer la modération.",
@@ -31,8 +46,14 @@ impl DiscordRole {
         }
     }
 
+    pub fn from_role_ids(role_ids: &Vec<String>) -> Option<Vec<Self>> {
+        Some(role_ids.into_iter()
+                     .filter_map(|id| DiscordRole::from_role_id(&id))
+                     .collect())
+    }
+
     // Function to compare the role with a string containing a role ID
-    fn matches_role_id(&self, role_id: &str) -> bool {
+    pub fn matches_role_id(&self, role_id: &str) -> bool {
         return if DiscordRole::Skitou.role_id() == role_id {
             true
         } else {

@@ -4,24 +4,28 @@ use std::sync::{Arc, LockResult, RwLock, RwLockReadGuard};
 use eframe::egui;
 use eframe::emath::Align;
 use eframe::epaint::{Margin, Rounding};
-use egui::{hex_color, Layout, Widget};
+use egui::{hex_color, Layout, Stroke, Widget};
 use egui_commonmark::CommonMarkCache;
+use log::info;
 
 use shared::discord::User;
-use shared::fiche_rp::{FicheRP, FicheState, Job};
-use shared::fiche_rp::ScienceLevel::Senior;
-use shared::fiche_rp::ScienceRole::Researcher;
+use shared::fiche_rp::{FicheRP, FicheState, FicheVersions, Job, ReviewMessage};
 use shared::user::FrontAccount;
+
 use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo, get_string};
-use crate::ui::components_helper::{ficherp_bubble, ficherp_edit, ficherp_viewer, ficherp_viewer_window};
+use crate::ui::components_helper::{comment_bubble, edit_comment_window, ficherp_bubble, ficherp_edit, ficherp_viewer, ficherp_viewer_window};
 
 pub struct FicheSpace {
     pub common_mark_cache: Arc<RwLock<CommonMarkCache>>,
     pub selected_fiche_account: Option<(FrontAccount, FicheRP)>,
+    pub selected_fiche_account_version: Option<(FrontAccount, FicheRP, FicheVersions)>,
     pub new_fiche: Option<FicheRP>,
     pub preview_fiche: bool,
-}
 
+    pub review_message: Option<ReviewMessage>,
+    pub writing_message: bool,
+
+}
 
 impl eframe::App for FicheSpace {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -35,9 +39,27 @@ impl eframe::App for FicheSpace {
             });
         }
 
+        if self.writing_message {
+            egui::Window::new("Ecriture commentaire").open(&mut self.writing_message).default_size([640.0, 960.0]).show(ctx, |ui| {
+                let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+                let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
+                let account = auth_lock.clone().account.unwrap();
+                let user: User = account.discord_user;
+
+                if let Some(review_message) = &mut self.review_message {
+                    edit_comment_window(ui, review_message, self.common_mark_cache.clone());
+                }
+            });
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             let frame = egui::Frame::none()
-                .fill(hex_color!("262626"))
+                .fill(hex_color!("#262626"))
+                .stroke(Stroke {
+                    width: 2.0,
+                    color: hex_color!("#404040"),
+                }
+                )
                 .rounding(Rounding {
                     nw: 25.0,
                     ne: 25.0,
@@ -56,14 +78,13 @@ impl eframe::App for FicheSpace {
                 bottom: 10.0,
             });
 
-
             ui.columns(3, |mut columns| {
                 columns[0].with_layout(Layout::top_down(Align::Center), |ui| {
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
                         if let Ok(all_account) = binding.read() {
                             ui.vertical(|ui| {
-                                egui::menu::bar(ui, |ui| {
+                                ui.horizontal(|ui| {
                                     //TODO: FILTERING, creation etc
                                     ui.label("MENUBAR");
                                     if ui.button(get_string("ficherp.create.fiche")).clicked() {
@@ -80,25 +101,20 @@ impl eframe::App for FicheSpace {
                                     }
                                 });
                                 all_account.iter().filter(|account| !account.fiches.is_empty()).for_each(|account| {
-                                    for ficherp in &account.fiches {
-                                        let account_ref: &FrontAccount = account;
-                                        let ficherp_ref: &FicheRP = ficherp;
-                                        ui.vertical(|ui| {
-                                            egui::menu::bar(ui, |ui| {
-                                                //TODO: FILTERING, creation etc
-                                                ui.label("MENUBAR");
-                                            });
+                                    ui.vertical(|ui| {
+                                        for ficherp in &account.fiches {
+                                            let account_ref: &FrontAccount = account;
+                                            let ficherp_ref: &FicheRP = ficherp;
                                             frame.show(ui, |ui| {
                                                 if ficherp_bubble(ui, ficherp_ref, &account_ref.discord_user).clicked() {
                                                     self.selected_fiche_account = Some((account_ref.clone(), ficherp_ref.clone()));
                                                 }
                                             });
-                                        });
-                                    }
+                                        }
+                                    });
                                 });
                             });
                         };
-
                     });
                 });
 
@@ -113,7 +129,7 @@ impl eframe::App for FicheSpace {
 
                             if let Some(ficherp) = &mut self.new_fiche {
                                 frame.show(ui, |ui| {
-                                    ficherp_edit(ui, ficherp, self.common_mark_cache.clone(), &mut self.preview_fiche)
+                                    ficherp_edit(ui, ficherp, &mut self.preview_fiche)
                                 });
                             }
                         });
@@ -121,7 +137,41 @@ impl eframe::App for FicheSpace {
                 });
                 columns[2].with_layout(Layout::top_down(Align::Center), |ui| {
                     ui.centered_and_justified(|ui| {
-                        frame.show(ui, |ui| {});
+                        let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
+                        if let Ok(all_account) = binding.read() {
+                            ui.vertical(|ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label("MENUBAR");
+                                    if ui.button(get_string("ficherp.review_message.create")).clicked() {
+                                        let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+                                        let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
+                                        let account = auth_lock.clone().account.unwrap();
+                                        self.review_message = Option::from(ReviewMessage {
+                                            account,
+                                            content: "".to_string(),
+                                            date: 0,
+                                            is_private: false,
+                                            set_state: FicheState::Waiting,
+                                        });
+                                        info!("BIDULE");
+                                        self.writing_message = true;
+                                    }
+                                });
+                                all_account.iter().filter(|account| !account.fiches.is_empty()).for_each(|account| {
+                                    ui.vertical(|ui| {
+                                        for ficherp in &account.fiches {
+                                            let account_ref: &FrontAccount = account;
+                                            let ficherp_ref: &FicheRP = ficherp;
+                                            for review_message in &ficherp_ref.messages {
+                                                frame.show(ui, |ui| {
+                                                    comment_bubble(ui, &review_message, self.common_mark_cache.clone())
+                                                });
+                                            }
+                                        }
+                                    });
+                                });
+                            });
+                        };
                     });
                 });
             });

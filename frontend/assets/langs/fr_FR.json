@@ -1,10 +1,10 @@
 {
   "auth.text": "Merci de vous connecter pour acceder à l'interface",
   "auth.btn.text": "Connexion via Discord et Steam",
-
   "nav.btn.home": "Accueil",
   "nav.btn.report": "Rapports",
   "nav.btn.lore": "Fiche de lore",
   "nav.btn.ficherp": "Fiche RP",
-  "ficherp.create.fiche": "Créer une nouvelle Fiche RP"
+  "ficherp.create.fiche": "Créer une nouvelle Fiche RP",
+  "ficherp.review_message.create": "Créer un nouveau commentaire"
 }
