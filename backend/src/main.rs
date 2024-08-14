@@ -24,7 +24,7 @@ use serenity::futures::{StreamExt, TryStreamExt};
 
 use shared::user::Account;
 
-use crate::api::front::{retrieve_accounts, retrieve_auth_account};
+use crate::api::front::{retrieve_accounts, retrieve_auth_account, submit_ficherp};
 use crate::api::oauth2::{auth, callback};
 use crate::api::webhook::{embed_webhook, text_webhook};
 use crate::utils::auth_utils::renew_token;
@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
             .wrap(Cors::default()
                 .allowed_origin("http://localhost:8080")
                 .allowed_origin("http://localhost:2828")
-                .allowed_methods(vec!["GET", "POST"])
+                .allow_any_method()
                 .allow_any_header()
                 .max_age(None)
             )
@@ -80,6 +80,7 @@ async fn main() -> Result<()> {
             .service(callback)
             .service(retrieve_accounts)
             .service(retrieve_auth_account)
+            .service(submit_ficherp)
             .service(Files::new("/", "dist").index_file("index.html"))
             .app_data(app_data.clone())
     })
