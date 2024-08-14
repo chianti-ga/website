@@ -12,7 +12,7 @@ mod tests {
     fn fiche_rp() {
         let fiche: FicheRP = FicheRP {
             name: "Roger".to_string(),
-            job: Job::Science(ScienceRole::Researcher(ScienceLevel::Senior)),
+            job: Job::Science(ScienceRole::Researcher(ScienceRank::Senior)),
             description: "Je suis un grand garçon".to_string(),
             lore: "je suis pas réel".to_string(),
             submission_date: 0,

@@ -7,7 +7,6 @@ pub enum DiscordRole {
     Moderator,
     LeadScenarist,
     Scenarist,
-    Skitou,
     Unknown
 }
 
@@ -19,7 +18,6 @@ impl DiscordRole {
             DiscordRole::Moderator => "1259573584767090699", //Gm mod
             DiscordRole::LeadScenarist => "1143632282926727328", // Resp scenarist
             DiscordRole::Scenarist => "1143509784591605841", // scenarist
-            DiscordRole::Skitou => "374283393799553036", // not a role id but its fine :D
             _ => "none"
         }
     }
@@ -30,7 +28,6 @@ impl DiscordRole {
             "1259573584767090699" => Some(DiscordRole::Moderator),
             "1143632282926727328" => Some(DiscordRole::LeadScenarist),
             "1143509784591605841" => Some(DiscordRole::Scenarist),
-            "374283393799553036" => Some(DiscordRole::Skitou),
             _ => None,
         }
     }
@@ -40,8 +37,7 @@ impl DiscordRole {
             DiscordRole::Admin => "Cette personne est un administrateur.",
             DiscordRole::Moderator => "Cette personne est chargée d’appliquer la modération.",
             DiscordRole::LeadScenarist => "Cette personne est un chef scénariste.\nIl décide de l'acceptation finale de votre fiche.",
-            DiscordRole::Scenarist => "Cette personne est un scénariste.\n Il donne son avis sur votre fiche.\nIl peut vous demander des modifications",
-            DiscordRole::Skitou => "Developpeur",
+            DiscordRole::Scenarist => "Cette personne est un scénariste.\n Il donne son avis sur votre fiche.\nIl peut vous demander des modifications ou la refuser.",
             _ => "unknown role"
         }
     }
@@ -54,11 +50,7 @@ impl DiscordRole {
 
     // Function to compare the role with a string containing a role ID
     pub fn matches_role_id(&self, role_id: &str) -> bool {
-        return if DiscordRole::Skitou.role_id() == role_id {
-            true
-        } else {
-            self.role_id() == role_id
-        };
+        self.role_id() == role_id
     }
 }
 
