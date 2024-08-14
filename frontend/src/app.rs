@@ -3,9 +3,9 @@ use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
 
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
-use egui::{Align, Button, Color32, FontId, Image, Layout, RichText};
+use egui::{Align, Button, Color32, FontId, hex_color, Image, Layout, RichText};
 use egui::FontFamily::Proportional;
-use egui::style::{DebugOptions, ScrollStyle};
+use egui::style::ScrollStyle;
 use egui_commonmark::CommonMarkCache;
 use json_gettext::{get_text, JSONGetText, static_json_gettext_build};
 use lazy_static::lazy_static;
@@ -70,18 +70,10 @@ impl App {
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
         let mut style: Style = Style::default();
         style.visuals.override_text_color.insert(Color32::from_hex("#B8B8B8").unwrap());
-        /*style.debug=DebugOptions{
-            debug_on_hover: true,
-            debug_on_hover_with_all_modifiers: true,
-            hover_shows_next: true,
-            show_expand_width: true,
-            show_expand_height: true,
-            show_resize: true,
-            show_interactive_widgets: true,
-            show_widget_hits: true,
-        };*/
+
         style.text_styles.insert(TextStyle::Name("heading2".into()), FontId::new(16.0, Proportional));
         style.text_styles.insert(TextStyle::Name("heading3".into()), FontId::new(14.0, Proportional));
+        style.visuals.extreme_bg_color = hex_color!("#161616");
         style.spacing.scroll = ScrollStyle::solid();
         cc.egui_ctx.set_style(Arc::new(style));
 
@@ -109,9 +101,10 @@ impl App {
 impl eframe::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        #[cfg(debug_assertions)]
         if self.is_ui_debug {
             ctx.style_mut(move |style| {
-                style.debug = DebugOptions {
+                style.debug = egui::style::DebugOptions {
                     debug_on_hover: true,
                     debug_on_hover_with_all_modifiers: true,
                     hover_shows_next: true,
@@ -124,7 +117,7 @@ impl eframe::App for App {
             });
         } else {
             ctx.style_mut(move |style| {
-                style.debug = DebugOptions::default()
+                style.debug = egui::style::DebugOptions::default()
             });
         }
 
@@ -135,7 +128,7 @@ impl eframe::App for App {
             egui::CentralPanel::default().show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.label(RichText::new(get_string("auth.text")).text_style(TextStyle::Heading));
-                    let discord_button = Button::image_and_text(Image::new(format!("{}discord_steam_link.svg", &self.location_url)).fit_to_original_size(0.75).maintain_aspect_ratio(true), get_string("auth.btn.text").to_string());
+                    let discord_button = Button::image_and_text(Image::new(image_resolver("discord_steam_link.svg")).fit_to_original_size(0.75).maintain_aspect_ratio(true), get_string("auth.btn.text").to_string());
                     if ui.add(discord_button).clicked() {
                         web_sys::window().expect("no global `window` exists").location().set_href(&*get_oath2_url()).expect("Can't redirect");
                     };
@@ -156,6 +149,8 @@ impl eframe::App for App {
                                 };
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     ui.label(format!("Connecté en tant que : {} ({})", account.discord_user.username, account.discord_user.id));
+
+                                    #[cfg(debug_assertions)]
                                     ui.toggle_value(&mut self.is_ui_debug, "debug")
                                 });
                             }
@@ -205,4 +200,18 @@ fn footer(ui: &mut egui::Ui) {
         ui.spacing_mut().item_spacing.x = 0.0;
         ui.label("© Project Visualis 2024");
     });
+}
+
+#[cfg(debug_assertions)]
+pub fn setup_debug_ui(style: &mut Style) {
+    style.debug = egui::style::DebugOptions {
+        debug_on_hover: true,
+        debug_on_hover_with_all_modifiers: true,
+        hover_shows_next: true,
+        show_expand_width: true,
+        show_expand_height: true,
+        show_resize: true,
+        show_interactive_widgets: true,
+        show_widget_hits: true,
+    };
 }

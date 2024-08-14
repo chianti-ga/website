@@ -1,21 +1,23 @@
 use std::ops::Add;
+use std::str::SplitWhitespace;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use eframe::emath::Align;
-use egui::{Button, FontSelection, Image, Layout, Response, RichText, TextBuffer, TextFormat, TextStyle};
+use egui::{Button, FontSelection, Image, Layout, OpenUrl, Response, RichText, TextBuffer, TextFormat, TextStyle};
 use egui::scroll_area::ScrollBarVisibility;
 use egui::text::LayoutJob;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use strum::IntoEnumIterator;
 
 use shared::discord::User;
-use shared::fiche_rp::{FicheRP, FicheState, Job, ReviewMessage, ScienceLevel, ScienceRole, SecurityLevel, SecurityRole};
+use shared::fiche_rp::{FicheRP, FicheState, FicheStateIter, Job, ReviewMessage, ScienceRank, ScienceRole, SecurityRank, SecurityRole};
 use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 
-use crate::app::{AuthInfo, image_resolver};
+use crate::app::{AuthInfo, get_string, image_resolver};
 use crate::app::AUTH_INFO;
+use crate::backend_handler::post_ficherp;
 
 pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Response {
     let avatar_url = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, user.avatar);
@@ -28,16 +30,19 @@ pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Resp
         ui.horizontal(|ui| {
             ui.add(avatar_image);
             ui.add_space(ui.min_rect().min.x);
+
             ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
             ui.add_space(ui.min_rect().min.x);
-            state_badge(ui, &ficherp.state);
+
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                state_badge(ui, &ficherp.state);
+            });
         });
 
         ui.separator();
         let mut layout_job = LayoutJob::default();
 
-        RichText::new("Job : ").strong()
-                               .text_style(TextStyle::Name("heading3".into()))
+        RichText::new("Job : ").strong().text_style(TextStyle::Name("heading3".into()))
                                .append_to(&mut layout_job, ui.style(), FontSelection::Default, Align::LEFT);
 
         layout_job.append(&*ficherp.job.to_string(), 0.0, TextFormat { ..Default::default() });
@@ -54,7 +59,12 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
-            ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
+            ui.horizontal(|ui| {
+                ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
+
+                let history_btn = Button::image_and_text(Image::new(image_resolver("history.svg")).fit_to_original_size(1.0).shrink_to_fit().maintain_aspect_ratio(true), "Historique de la fiche");
+                if ui.add(history_btn).clicked() {}
+            });
         });
         ui.horizontal(|ui| {
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
@@ -62,9 +72,6 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
             });
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let history_btn = Button::image_and_text(Image::new(image_resolver("history.svg")).fit_to_original_size(1.0).shrink_to_fit().maintain_aspect_ratio(true), "Historique de la fiche");
-                if ui.add(history_btn).clicked() {}
-
                 state_badge(ui, &ficherp.state);
             });
         });
@@ -73,8 +80,7 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
 
         let mut layout_job = LayoutJob::default();
 
-        RichText::new("Job : ").strong()
-                               .text_style(TextStyle::Name("heading3".into()))
+        RichText::new("Job : ").strong().text_style(TextStyle::Name("heading3".into()))
                                .append_to(&mut layout_job, ui.style(), FontSelection::Default, Align::LEFT);
 
         layout_job.append(&*ficherp.job.to_string(), 0.0, TextFormat { ..Default::default() });
@@ -84,7 +90,9 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
 
         let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
 
-        egui::ScrollArea::vertical().id_source("scoll_text_viewer").show(ui, |ui| {
+        let height = ui.available_size().y * 0.98;
+
+        egui::ScrollArea::vertical().max_height(height).id_source("scoll_text_viewer").show(ui, |ui| {
             ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
 
             CommonMarkViewer::new("desc_viewer").show(ui, &mut cache, &ficherp.description);
@@ -93,7 +101,6 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
             ui.label(RichText::new("Lore : ").strong().text_style(TextStyle::Name("heading3".into())));
 
             CommonMarkViewer::new("lore_viewer").show(ui, &mut cache, &ficherp.lore);
-            ui.separator();
         });
     });
 }
@@ -117,33 +124,50 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             });
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                //ui.vertical(|ui| {
                 let preview_btn = Button::image_and_text(Image::new(image_resolver("eye_preview.svg")).fit_to_original_size(1.0).shrink_to_fit().maintain_aspect_ratio(true), "Preview de la fiche");
+                let markdown_btn = Button::image_and_text(Image::new(image_resolver("markdown-mark.svg")).fit_to_original_size(1.0).shrink_to_fit().maintain_aspect_ratio(true), "Formatage ?");
+
                 if ui.add(preview_btn).clicked() {
                     *is_previewing = true;
                 }
+
+                if ui.add(markdown_btn).clicked() {
+                    ui.ctx().open_url(OpenUrl::new_tab("https://commonmark.org/help/"));
+                }
+                //});
             });
         });
 
         ui.separator();
 
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Nom : ").text_style(TextStyle::Name("heading3".into())));
+            ui.text_edit_singleline(&mut ficherp.name);
+        });
+
+        //TODO:other case
+
         ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new("Job : ").text_style(TextStyle::Name("heading3".into())));
             let mut job_string: String = ficherp.job.to_string();
-            job_string = truncate_at_char_boundary(job_string, 20);
-            egui::ComboBox::from_label("").selected_text(job_string).show_ui(ui, |ui| {
+            let mut words: SplitWhitespace = job_string.split_whitespace();
+            egui::ComboBox::from_label("").selected_text(words.next().unwrap()).show_ui(ui, |ui| {
                 ui.selectable_value(&mut ficherp.job, Job::ClassD, Job::ClassD.to_string());
-                ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityLevel::Rct)), "Officier de Sécurité");
-                ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceLevel::Beginner)), "Science");
+                ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
+                ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Science");
                 ui.selectable_value(&mut ficherp.job, Job::Doctor, Job::Doctor.to_string());
                 ui.selectable_value(&mut ficherp.job, Job::Chaos, Job::Chaos.to_string());
+                ui.selectable_value(&mut ficherp.job, Job::Other("".to_string()), "Autres");
+
             });
 
             if ficherp.job.to_string().contains("Sécurité") {
                 let mut role_string: String = ficherp.job.get_security_role().unwrap().to_string();
                 role_string = truncate_at_char_boundary(role_string, 20);
                 egui::ComboBox::from_label("Role").selected_text(role_string).show_ui(ui, |ui| {
-                    ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityLevel::Rct)), "Officier de Sécurité");
-                    ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::TacticalAgent(SecurityLevel::Rct)), "Agent Tactique");
+                    ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
+                    ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::Gunsmith(SecurityRank::Rct)), "Armurier");
                 });
 
                 let mut level: String = ficherp.job.clone().get_security_level().unwrap().to_string();
@@ -153,45 +177,18 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                         Job::Security(role) => {
                             match role {
                                 SecurityRole::SecurityOfficier(_) => {
-                                    for level in SecurityLevel::iter() {
+                                    for level in SecurityRank::iter() {
                                         let mut level_string = level.to_string();
                                         level_string = truncate_at_char_boundary(level_string, 20);
                                         ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(level.clone())), level_string);
                                     }
                                 }
-                                SecurityRole::TacticalAgent(_) => {
-                                    for level in SecurityLevel::iter() {
+                                SecurityRole::Gunsmith(_) => {
+                                    for level in SecurityRank::iter() {
                                         let mut level_string = level.to_string();
                                         level_string = truncate_at_char_boundary(level_string, 20);
-                                        ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::TacticalAgent(level.clone())), level_string);
+                                        ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::Gunsmith(level.clone())), level_string);
                                     }
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                });
-            }
-            if ficherp.job.to_string().contains("Science") {
-                egui::ComboBox::from_label("Role").selected_text(ficherp.job.get_science_role().unwrap().to_string()).show_ui(ui, |ui| {
-                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceLevel::Beginner)), "Scientifique");
-                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceLevel::Beginner)), "Chercheur");
-                    //ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceLevel::Beginner)), role.to_string());
-                });
-                let rank: String = ficherp.job.clone().get_science_level().unwrap().to_string();
-                egui::ComboBox::from_label("Rang").selected_text(&rank).show_ui(ui, |ui| {
-                    match &ficherp.job {
-                        Job::Science(role) => {
-                            match role {
-                                ScienceRole::Scientific(_) => {
-                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceLevel::Beginner)), "Junior");
-                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceLevel::Confirmed)), "Confirmé");
-                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceLevel::Senior)), "Senior");
-                                }
-                                ScienceRole::Researcher(_) => {
-                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceLevel::Beginner)), "Junior");
-                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceLevel::Confirmed)), "Confirmé");
-                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceLevel::Senior)), "Senior");
                                 }
                                 _ => {}
                             }
@@ -200,29 +197,63 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                     }
                 });
             }
+
+            if ficherp.job.to_string().contains("Science") {
+                egui::ComboBox::from_label("Role").selected_text(ficherp.job.get_science_role().unwrap().to_string()).show_ui(ui, |ui| {
+                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Scientifique");
+                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceRank::Beginner)), "Chercheur");
+                    //ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceLevel::Beginner)), role.to_string());
+                });
+                let rank: String = ficherp.job.clone().get_science_level().unwrap().to_string();
+                egui::ComboBox::from_label("Rang").selected_text(&rank).show_ui(ui, |ui| {
+                    match &ficherp.job {
+                        Job::Science(role) => {
+                            match role {
+                                ScienceRole::Scientific(_) => {
+                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Junior");
+                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::NoLevel)), "Confirmé");
+                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Senior)), "Senior");
+                                }
+                                ScienceRole::Researcher(_) => {
+                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceRank::Beginner)), "Junior");
+                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceRank::NoLevel)), "Confirmé");
+                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceRank::Senior)), "Senior");
+                                }
+                                _ => {}
+                            }
+                        }
+                        _ => {}
+                    }
+                });
+            }
+
+            if ficherp.job.to_string().contains("Autres") {}
+
         });
 
         ui.separator();
 
-        egui::ScrollArea::vertical().scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible).show(ui, |ui| {
-            ui.vertical(|ui| {
-                ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
+        let height = ui.available_size().y * 0.25;
+        ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
+        egui::ScrollArea::vertical().id_source("scroll_physic").max_height(height).scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible).show(ui, |ui| {
+            let size = ui.available_size();
+            ui.add_sized(size, egui::TextEdit::multiline(&mut ficherp.description));
+        });
 
-                let mut size = ui.available_size();
-                size.y = size.y / 3.0;
-                size.x *= 0.98;
+        ui.label(RichText::new("Lore : ").strong().text_style(TextStyle::Name("heading3".into())));
 
-                ui.add_sized(size, egui::TextEdit::multiline(&mut ficherp.description));
+        let height = ui.available_size().y * 0.90;
 
-                ui.label(RichText::new("Lore : ").strong().text_style(TextStyle::Name("heading3".into())));
+        egui::ScrollArea::vertical().id_source("scroll_lore").max_height(height).scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible).show(ui, |ui| {
+            let size = ui.available_size();
+            ui.add_sized(size, egui::TextEdit::multiline(&mut ficherp.lore));
+        });
+        ui.add_space(5.0);
 
-                let mut size = ui.available_size();
-                size.y *= 0.95;
-                size.x *= 0.98;
-                ui.add_sized(size, egui::TextEdit::multiline(&mut ficherp.lore));
-
-                ui.label("TESTTTTTTTT")
-            });
+        ui.vertical_centered(|ui| {
+            if ui.button(get_string("ficherp.create.submit")).clicked() {
+                post_ficherp(ficherp);
+            }
         });
     });
 }
@@ -270,6 +301,25 @@ pub fn edit_comment_window(ui: &mut egui::Ui, review_message: &mut ReviewMessage
 
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
     ui.vertical(|ui| {
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut review_message.is_comment, "Commentaire ?");
+            if review_message.is_comment {
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.checkbox(&mut review_message.is_private, "Commentaire privé ?");
+                    review_message.set_state = FicheState::Comment;
+                });
+            } else {
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    egui::ComboBox::from_label("Statue de la fiche").selected_text(review_message.set_state.get_text()).show_ui(ui, |ui| {
+                        let state_iter: FicheStateIter = FicheState::iter();
+                        state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
+                            ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
+                        });
+                    });
+                });
+            }
+        });
+
         ui.label(RichText::new("Commentaire : ").text_style(TextStyle::Name("heading3".into())).strong());
 
         let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
@@ -277,9 +327,11 @@ pub fn edit_comment_window(ui: &mut egui::Ui, review_message: &mut ReviewMessage
         egui::ScrollArea::vertical().id_source("scoll_comment_viewer").show(ui, |ui| {
             let mut size = ui.available_size();
             size.y = size.y / 3.0;
-            size.x *= 0.97;
+            size.x *= 0.99;
 
             ui.add_sized(size, egui::TextEdit::multiline(&mut review_message.content));
+
+            ui.label(RichText::new("Preview : ").text_style(TextStyle::Name("heading3".into())).strong());
 
             CommonMarkViewer::new("comment_viewer").show(ui, &mut cache, &review_message.content);
         });
@@ -317,9 +369,13 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
         ui.horizontal(|ui| {
             ui.add(avatar_image);
             ui.add_space(ui.min_rect().min.x);
+
             ui.label(format!("[{}] {} ", role, user.username));
             ui.add_space(ui.min_rect().min.x);
-            state_badge(ui, &review_message.set_state);
+
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                state_badge(ui, &review_message.set_state);
+            });
         });
 
         ui.separator();
@@ -346,9 +402,8 @@ pub fn state_badge(ui: &mut egui::Ui, state: &FicheState) {
         FicheState::Comment => "comment.svg"
     };
 
-    let badge: Image = Image::new(image_resolver(format!("badges/{}", img_to_load).as_str())).fit_to_original_size(1.0).shrink_to_fit().maintain_aspect_ratio(true);
+    let badge: Image = Image::new(image_resolver(format!("badges/{}", img_to_load).as_str())).fit_to_original_size(0.9).shrink_to_fit().maintain_aspect_ratio(true);
     ui.add(badge.clone());
-    //ui.ctx().forget_image(badge.uri().unwrap());
 }
 
 fn truncate_at_char_boundary(s: String, index: usize) -> String {

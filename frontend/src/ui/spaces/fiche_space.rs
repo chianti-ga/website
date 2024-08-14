@@ -1,19 +1,17 @@
-use std::slice::Iter;
-use std::sync::{Arc, LockResult, RwLock, RwLockReadGuard};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use eframe::egui;
 use eframe::emath::Align;
 use eframe::epaint::{Margin, Rounding};
-use egui::{hex_color, Layout, Stroke, Widget};
+use egui::{hex_color, InnerResponse, Layout, Sense, Stroke, Widget};
 use egui_commonmark::CommonMarkCache;
 use log::info;
-
 use shared::discord::User;
 use shared::fiche_rp::{FicheRP, FicheState, FicheVersions, Job, ReviewMessage};
 use shared::user::FrontAccount;
 
 use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo, get_string};
-use crate::ui::components_helper::{comment_bubble, edit_comment_window, ficherp_bubble, ficherp_edit, ficherp_viewer, ficherp_viewer_window};
+use crate::ui::components::fiche_components::{comment_bubble, edit_comment_window, ficherp_bubble, ficherp_edit, ficherp_viewer, ficherp_viewer_window};
 
 pub struct FicheSpace {
     pub common_mark_cache: Arc<RwLock<CommonMarkCache>>,
@@ -24,7 +22,6 @@ pub struct FicheSpace {
 
     pub review_message: Option<ReviewMessage>,
     pub writing_message: bool,
-
 }
 
 impl eframe::App for FicheSpace {
@@ -40,7 +37,7 @@ impl eframe::App for FicheSpace {
         }
 
         if self.writing_message {
-            egui::Window::new("Ecriture commentaire").open(&mut self.writing_message).default_size([640.0, 960.0]).show(ctx, |ui| {
+            egui::Window::new("Ecriture commentaire").open(&mut self.writing_message).default_size([640.0, 600.0]).resizable(false).show(ctx, |ui| {
                 let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
                 let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
                 let account = auth_lock.clone().account.unwrap();
@@ -88,7 +85,9 @@ impl eframe::App for FicheSpace {
                                     //TODO: FILTERING, creation etc
                                     ui.label("MENUBAR");
                                     if ui.button(get_string("ficherp.create.fiche")).clicked() {
+                                        self.selected_fiche_account = None;
                                         self.new_fiche = Option::from(FicheRP {
+                                            id: "".to_string(),
                                             name: "".to_string(),
                                             job: Job::ClassD,
                                             description: "".to_string(),
@@ -100,15 +99,22 @@ impl eframe::App for FicheSpace {
                                         });
                                     }
                                 });
+
+                                ui.add_space(10.0);
+
                                 all_account.iter().filter(|account| !account.fiches.is_empty()).for_each(|account| {
                                     ui.vertical(|ui| {
                                         for ficherp in &account.fiches {
                                             let account_ref: &FrontAccount = account;
                                             let ficherp_ref: &FicheRP = ficherp;
                                             frame.show(ui, |ui| {
-                                                if ficherp_bubble(ui, ficherp_ref, &account_ref.discord_user).clicked() {
+                                                let bubble_rec = ficherp_bubble(ui, ficherp_ref, &account_ref.discord_user);
+
+                                                let response = ui.allocate_rect(bubble_rec.rect, Sense::click());
+
+                                                if response.clicked() {
                                                     self.selected_fiche_account = Some((account_ref.clone(), ficherp_ref.clone()));
-                                                }
+                                                };
                                             });
                                         }
                                     });
@@ -151,12 +157,16 @@ impl eframe::App for FicheSpace {
                                             content: "".to_string(),
                                             date: 0,
                                             is_private: false,
+                                            is_comment: false,
                                             set_state: FicheState::Waiting,
                                         });
-                                        info!("BIDULE");
                                         self.writing_message = true;
                                     }
                                 });
+
+                                ui.add_space(10.0);
+
+
                                 all_account.iter().filter(|account| !account.fiches.is_empty()).for_each(|account| {
                                     ui.vertical(|ui| {
                                         for ficherp in &account.fiches {
