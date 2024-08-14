@@ -6,6 +6,7 @@ use crate::user::FrontAccount;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct FicheRP {
+    pub id: String,
     pub name: String,
     pub job: Job,
     pub description: String,
@@ -15,12 +16,6 @@ pub struct FicheRP {
     pub version: Vec<FicheVersions>,
     pub state: FicheState,
     //TODO:VEC RAPPORTS
-}
-
-impl FicheRP {
-    pub fn get_markdown_string(&mut self) -> String {
-        format!("**Nom**: {}\n---\n**Job** {}\n---\n**Description** {}\n---\n**Lore du personage** {}", &self.name, &self.job, &self.description, &self.lore)
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -44,10 +39,11 @@ pub struct ReviewMessage {
     pub content: String,
     pub date: u128,
     pub is_private: bool,
+    pub is_comment: bool,
     pub set_state: FicheState,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, EnumIter)]
 pub enum FicheState {
     Waiting,
     RequestModification,
@@ -78,46 +74,31 @@ pub enum Job {
     Doctor,
     SiteDirector,
     Chaos,
+    Other(String)
 }
 impl Job {
     pub fn get_science_role(&self) -> Option<&ScienceRole> {
         return match self {
-            Job::Security(_) => None,
             Job::Science(role) => Option::from(role),
-            Job::ClassD => None,
-            Job::Doctor => None,
-            Job::SiteDirector => None,
-            Job::Chaos => None,
+            _ => None
         }
     }
     pub fn get_security_role(&self) -> Option<&SecurityRole> {
         return match self {
             Job::Security(role) => Option::from(role),
-            Job::Science(_) => None,
-            Job::ClassD => None,
-            Job::Doctor => None,
-            Job::SiteDirector => None,
-            Job::Chaos => None,
+            _ => None
         }
     }
-    pub fn get_science_level(&self) -> Option<&ScienceLevel> {
+    pub fn get_science_level(&self) -> Option<&ScienceRank> {
         return match self {
-            Job::Security(_) => None,
             Job::Science(role) => Option::from(role.get_science_level()),
-            Job::ClassD => None,
-            Job::Doctor => None,
-            Job::SiteDirector => None,
-            Job::Chaos => None,
+            _ => None
         }
     }
-    pub fn get_security_level(&self) -> Option<&SecurityLevel> {
+    pub fn get_security_level(&self) -> Option<&SecurityRank> {
         return match self {
             Job::Security(role) => Option::from(role.get_security_level()),
-            Job::Science(_) => None,
-            Job::ClassD => None,
-            Job::Doctor => None,
-            Job::SiteDirector => None,
-            Job::Chaos => None,
+            _ => None
         }
     }
 }
@@ -130,18 +111,18 @@ impl Display for Job {
             Job::Doctor => write!(f, "Médecin"),
             Job::SiteDirector => write!(f, "Directeur du Site"),
             Job::Chaos => write!(f, "Chaos"),
-
+            Job::Other(string) => write!(f, "{}", string),
         }
     }
 }
 #[derive(Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub enum ScienceRole {
-    Scientific(ScienceLevel),
-    Researcher(ScienceLevel),
-    Supervisor(ScienceLevel),
+    Scientific(ScienceRank),
+    Researcher(ScienceRank),
+    Supervisor(ScienceRank),
 }
 impl ScienceRole {
-    fn get_science_level(&self) -> &ScienceLevel {
+    fn get_science_level(&self) -> &ScienceRank {
         return match self {
             ScienceRole::Scientific(level) => level,
             ScienceRole::Researcher(level) => level,
@@ -159,32 +140,35 @@ impl Display for ScienceRole {
     }
 }
 #[derive(Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub enum ScienceLevel {
+pub enum ScienceRank {
     Beginner,
-    Confirmed,
+    NoLevel,
     Senior,
 }
 
-impl Display for ScienceLevel {
+impl Display for ScienceRank {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ScienceLevel::Beginner => write!(f, "Junior"),
-            ScienceLevel::Confirmed => write!(f, "Confirmé"),
-            ScienceLevel::Senior => write!(f, "Sénior"),
+            ScienceRank::Beginner => write!(f, "Junior"),
+            ScienceRank::NoLevel => write!(f, "[Aucun Grade]"),
+            ScienceRank::Senior => write!(f, "Sénior"),
         }
     }
 }
 #[derive(Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub enum SecurityRole {
-    SecurityOfficier(SecurityLevel),
-    TacticalAgent(SecurityLevel),
+    SecurityOfficier(SecurityRank),
+    Gunsmith(SecurityRank),
+    TacticalAgent(SecurityRank),
 }
 
 impl SecurityRole {
-    fn get_security_level(&self) -> &SecurityLevel {
+    fn get_security_level(&self) -> &SecurityRank {
         return match self {
             SecurityRole::SecurityOfficier(level) => level,
             SecurityRole::TacticalAgent(level) => level,
+            SecurityRole::Gunsmith(level) => level,
+
         }
     }
 }
@@ -192,12 +176,13 @@ impl Display for SecurityRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             SecurityRole::SecurityOfficier(level) => write!(f, "Officier de Sécurité ({})", level),
-            SecurityRole::TacticalAgent(level) => write!(f, "Agent Tactique ({})", level)
+            SecurityRole::TacticalAgent(level) => write!(f, "Agent Tactique ({})", level),
+            SecurityRole::Gunsmith(level) => write!(f, "Armurier ({})", level)
         }
     }
 }
 #[derive(Serialize, Deserialize, Clone, Eq, PartialEq, EnumIter)]
-pub enum SecurityLevel {
+pub enum SecurityRank {
     Rct,
     Sdt,
     sdt,
@@ -218,28 +203,28 @@ pub enum SecurityLevel {
     Col,
     Gen,
 }
-impl Display for SecurityLevel {
+impl Display for SecurityRank {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            SecurityLevel::Rct => write!(f, "Recrue"),
-            SecurityLevel::Sdt => write!(f, "Soldat"),
-            SecurityLevel::sdt => write!(f, "Première Classe"),
-            SecurityLevel::cpl => write!(f, "Caporal"),
-            SecurityLevel::cplC => write!(f, "Caporal-Chef"),
-            SecurityLevel::CplC1c => write!(f, "Caporal-Chef Première Classe"),
-            SecurityLevel::Sgt => write!(f, "Sergent"),
-            SecurityLevel::SgtC => write!(f, "Sergent-Chef"),
-            SecurityLevel::Adj => write!(f, "Adjudant"),
-            SecurityLevel::AdjC => write!(f, "Adjudant-Chef"),
-            SecurityLevel::Maj => write!(f, "Major"),
-            SecurityLevel::Asp => write!(f, "Aspirant"),
-            SecurityLevel::Slt => write!(f, "Sous-Lieutenant"),
-            SecurityLevel::Lt => write!(f, "Lieutenant"),
-            SecurityLevel::Cpt => write!(f, "Capitaine"),
-            SecurityLevel::Cmd => write!(f, "Commandant"),
-            SecurityLevel::LtCol => write!(f, "Lieutenant-Colonel"),
-            SecurityLevel::Col => write!(f, "Colonel"),
-            SecurityLevel::Gen => write!(f, "Général"),
+            SecurityRank::Rct => write!(f, "Recrue"),
+            SecurityRank::Sdt => write!(f, "Soldat"),
+            SecurityRank::sdt => write!(f, "Première Classe"),
+            SecurityRank::cpl => write!(f, "Caporal"),
+            SecurityRank::cplC => write!(f, "Caporal-Chef"),
+            SecurityRank::CplC1c => write!(f, "Caporal-Chef Première Classe"),
+            SecurityRank::Sgt => write!(f, "Sergent"),
+            SecurityRank::SgtC => write!(f, "Sergent-Chef"),
+            SecurityRank::Adj => write!(f, "Adjudant"),
+            SecurityRank::AdjC => write!(f, "Adjudant-Chef"),
+            SecurityRank::Maj => write!(f, "Major"),
+            SecurityRank::Asp => write!(f, "Aspirant"),
+            SecurityRank::Slt => write!(f, "Sous-Lieutenant"),
+            SecurityRank::Lt => write!(f, "Lieutenant"),
+            SecurityRank::Cpt => write!(f, "Capitaine"),
+            SecurityRank::Cmd => write!(f, "Commandant"),
+            SecurityRank::LtCol => write!(f, "Lieutenant-Colonel"),
+            SecurityRank::Col => write!(f, "Colonel"),
+            SecurityRank::Gen => write!(f, "Général"),
         }
     }
 }
