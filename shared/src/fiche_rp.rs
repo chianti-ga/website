@@ -111,7 +111,7 @@ impl Display for Job {
             Job::Doctor => write!(f, "Médecin"),
             Job::SiteDirector => write!(f, "Directeur du Site"),
             Job::Chaos => write!(f, "Chaos"),
-            Job::Other(string) => write!(f, "{}", string),
+            Job::Other(string) => write!(f, "Autres ({})", string),
         }
     }
 }
