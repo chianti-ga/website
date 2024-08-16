@@ -22,6 +22,7 @@ pub struct FicheSpace {
 
     pub review_message: Option<ReviewMessage>,
     pub writing_message: bool,
+    pub job_text_buffer: String
 }
 
 impl eframe::App for FicheSpace {
@@ -135,7 +136,7 @@ impl eframe::App for FicheSpace {
 
                             if let Some(ficherp) = &mut self.new_fiche {
                                 frame.show(ui, |ui| {
-                                    ficherp_edit(ui, ficherp, &mut self.preview_fiche)
+                                    ficherp_edit(ui, ficherp, &mut self.preview_fiche, &mut self.job_text_buffer)
                                 });
                             }
                         });

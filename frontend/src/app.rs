@@ -92,6 +92,7 @@ impl App {
                 preview_fiche: false,
                 review_message: None,
                 writing_message: false,
+                job_text_buffer: "".to_string(),
             },
             space_panel: SpacePanel::new(),
         }

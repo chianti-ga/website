@@ -105,7 +105,7 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
     });
 }
 
-pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mut bool) {
+pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mut bool, job_text_buffer: &mut String) {
     let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
     let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
     let account = auth_lock.clone().account.unwrap();
@@ -145,8 +145,6 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             ui.label(RichText::new("Nom : ").text_style(TextStyle::Name("heading3".into())));
             ui.text_edit_singleline(&mut ficherp.name);
         });
-
-        //TODO:other case
 
         ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new("Job : ").text_style(TextStyle::Name("heading3".into())));
@@ -227,7 +225,9 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                 });
             }
 
-            if ficherp.job.to_string().contains("Autres") {}
+            if ficherp.job.to_string().contains("Autres") {
+                ui.text_edit_singleline(job_text_buffer);
+            }
 
         });
 
@@ -252,6 +252,9 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
 
         ui.vertical_centered(|ui| {
             if ui.button(get_string("ficherp.create.submit")).clicked() {
+                if ficherp.job.to_string().contains("Autres") {
+                    ficherp.job = Job::Other(job_text_buffer.clone());
+                }
                 post_ficherp(ficherp);
             }
         });
@@ -402,7 +405,7 @@ pub fn state_badge(ui: &mut egui::Ui, state: &FicheState) {
         FicheState::Comment => "comment.svg"
     };
 
-    let badge: Image = Image::new(image_resolver(format!("badges/{}", img_to_load).as_str())).fit_to_original_size(0.9).shrink_to_fit().maintain_aspect_ratio(true);
+    let badge: Image = Image::new(image_resolver(format!("badges/{}", img_to_load).as_str())).fit_to_original_size(1.0).maintain_aspect_ratio(true);
     ui.add(badge.clone());
 }
 
