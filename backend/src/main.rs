@@ -15,7 +15,7 @@ use config::{Config, File};
 use dashmap::DashMap;
 use env_logger::Env;
 use lazy_static::lazy_static;
-use log::{error, info};
+use log::{error, info, warn};
 use mongodb::{Collection, Cursor};
 use mongodb::bson::{bson, doc, Document};
 use oauth2::{AuthUrl, Client, ClientId, ClientSecret, RedirectUrl, StandardRevocableToken, TokenResponse, TokenUrl};
@@ -116,7 +116,13 @@ pub async fn update_token_thread(dbclient: mongodb::Client) {
             let mut accounts_cursor: Cursor<Account> = account_collection.find(Document::new()).await.expect("Can't get all account");
 
             while let Some(account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
-                let time_passed_since_renew = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                let time_passed_since_renew: i64 = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) as i64 - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
+
+                if time_passed_since_renew < 0 {
+                    warn!("Can't renew token for {}({}) since it has expired", account.discord_user.username, account.discord_user.id);
+                    return;
+                }
+
                 if time_passed_since_renew <= 86400 { //renew when one day or less is left
                     renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
                     info!("Renewing token for {}({})", account.discord_user.username, account.discord_user.id);
