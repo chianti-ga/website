@@ -8,7 +8,7 @@ use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::reqwest::async_http_client;
 use reqwest::{Client, Response};
 use serde_json::Value;
-
+use uuid::Uuid;
 use shared::discord::{DiscordAuthorizationInformation, GuildMember};
 use shared::user::Account;
 
@@ -98,7 +98,7 @@ pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mo
     let query: Document = doc! {
         "token.access_token" : old_token
     };
-    accounts.find_one(query.clone()).await.expect("Can't find account to update").expect("Can't retrieve account document");
+    let account: Account = accounts.find_one(query.clone()).await.expect("Can't find account to update").expect("Can't retrieve account document");
 
     let token_result: BasicTokenResponse = oauth_client
         .exchange_refresh_token(renew_token)
@@ -107,12 +107,16 @@ pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mo
 
     let time_now: u64 = SystemTime::now().duration_since(UNIX_EPOCH).expect("invalid time").as_secs();
 
+    let auth_id: String = Uuid::now_v7().to_string();
+
     let update_doc = doc! {
         "$set": {
             "token": to_bson(&token_result).unwrap(),
-            "last_renewal": to_bson(&time_now).unwrap()
+            "last_renewal": to_bson(&time_now).unwrap(),
+            "auth_id": to_bson(&auth_id).unwrap()
         }
     };
+
     accounts.update_one(query, update_doc).await.expect("Failed to update account for token change");
-    update_account_discord(token_result.access_token().secret(), client, &Client::new()).await;
+    update_account_discord(&account.auth_id, client, &Client::new()).await;
 }

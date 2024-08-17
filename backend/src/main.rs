@@ -21,13 +21,13 @@ use mongodb::bson::{bson, doc, Document};
 use oauth2::{AuthUrl, Client, ClientId, ClientSecret, RedirectUrl, StandardRevocableToken, TokenResponse, TokenUrl};
 use oauth2::basic::{BasicClient, BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenResponse, BasicTokenType};
 use serenity::futures::{StreamExt, TryStreamExt};
-
+use uuid::Uuid;
 use shared::user::Account;
 
 use crate::api::front::{retrieve_accounts, retrieve_auth_account, submit_ficherp};
 use crate::api::oauth2::{auth, callback};
 use crate::api::webhook::{embed_webhook, text_webhook};
-use crate::utils::auth_utils::renew_token;
+use crate::utils::auth_utils::{renew_token, update_auth_id};
 use crate::utils::config_utils::{Configuration, Oauth2Client};
 
 mod api;
@@ -115,11 +115,12 @@ pub async fn update_token_thread(dbclient: mongodb::Client) {
             let account_collection: Collection<Account> = dbclient.clone().database("visualis-website").collection("account");
             let mut accounts_cursor: Cursor<Account> = account_collection.find(Document::new()).await.expect("Can't get all account");
 
-            while let Some(account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
+            while let Some(mut account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
                 let time_passed_since_renew: i64 = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) as i64 - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
 
                 if time_passed_since_renew < 0 {
                     warn!("Can't renew token for {}({}) since it has expired", account.discord_user.username, account.discord_user.id);
+                    update_auth_id(&account.discord_user.id, &Uuid::now_v7().to_string(), dbclient).await;
                     return;
                 }
 
