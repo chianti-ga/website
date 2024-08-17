@@ -90,6 +90,7 @@ impl App {
                 selected_fiche_account_version: None,
                 new_fiche: None,
                 preview_fiche: false,
+                view_fiche_history: false,
                 review_message: None,
                 writing_message: false,
                 job_text_buffer: "".to_string(),

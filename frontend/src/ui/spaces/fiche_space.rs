@@ -3,26 +3,28 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 use eframe::egui;
 use eframe::emath::Align;
 use eframe::epaint::{Margin, Rounding};
-use egui::{hex_color, InnerResponse, Layout, Sense, Stroke, Widget};
+use egui::{hex_color, Layout, Sense, Stroke, Widget};
 use egui_commonmark::CommonMarkCache;
-use log::info;
+
 use shared::discord::User;
-use shared::fiche_rp::{FicheRP, FicheState, FicheVersions, Job, ReviewMessage};
+use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, ReviewMessage};
 use shared::user::FrontAccount;
 
 use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo, get_string};
-use crate::ui::components::fiche_components::{comment_bubble, edit_comment_window, ficherp_bubble, ficherp_edit, ficherp_viewer, ficherp_viewer_window};
+use crate::ui::components::comment_components::{comment_bubble, edit_comment_window};
+use crate::ui::components::fiche_components::{ficherp_bubble, ficherp_edit, ficherp_history_viewer_window, ficherp_viewer, ficherp_viewer_window};
 
 pub struct FicheSpace {
     pub common_mark_cache: Arc<RwLock<CommonMarkCache>>,
     pub selected_fiche_account: Option<(FrontAccount, FicheRP)>,
-    pub selected_fiche_account_version: Option<(FrontAccount, FicheRP, FicheVersions)>,
+    pub selected_fiche_account_version: Option<FicheVersion>,
     pub new_fiche: Option<FicheRP>,
     pub preview_fiche: bool,
+    pub view_fiche_history: bool,
 
     pub review_message: Option<ReviewMessage>,
     pub writing_message: bool,
-    pub job_text_buffer: String
+    pub job_text_buffer: String,
 }
 
 impl eframe::App for FicheSpace {
@@ -37,6 +39,14 @@ impl eframe::App for FicheSpace {
             });
         }
 
+        if self.view_fiche_history {
+            egui::Window::new("Historique").open(&mut self.view_fiche_history).default_size([640.0, 960.0]).show(ctx, |ui| {
+                let user: User = self.selected_fiche_account.clone().unwrap().0.discord_user;
+                let ficherp: FicheRP = self.selected_fiche_account.clone().unwrap().1;
+                ficherp_history_viewer_window(ui, &ficherp, &mut self.selected_fiche_account_version.clone(), &user, self.common_mark_cache.clone());
+            });
+        }
+
         if self.writing_message {
             egui::Window::new("Ecriture commentaire").open(&mut self.writing_message).default_size([640.0, 600.0]).resizable(false).show(ctx, |ui| {
                 let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
@@ -45,7 +55,7 @@ impl eframe::App for FicheSpace {
                 let user: User = account.discord_user;
 
                 if let Some(review_message) = &mut self.review_message {
-                    edit_comment_window(ui, review_message, self.common_mark_cache.clone());
+                    edit_comment_window(ui, self.selected_fiche_account.clone().unwrap().1.id, review_message, self.common_mark_cache.clone());
                 }
             });
         }
@@ -114,6 +124,7 @@ impl eframe::App for FicheSpace {
                                                 let response = ui.allocate_rect(bubble_rec.rect, Sense::click());
 
                                                 if response.clicked() {
+                                                    self.new_fiche = None;
                                                     self.selected_fiche_account = Some((account_ref.clone(), ficherp_ref.clone()));
                                                 };
                                             });
@@ -130,7 +141,7 @@ impl eframe::App for FicheSpace {
                         ui.vertical_centered(|ui| {
                             if let Some((account, ficherp)) = self.selected_fiche_account.clone() {
                                 frame.show(ui, |ui| {
-                                    ficherp_viewer(ui, &ficherp, &account.discord_user, self.common_mark_cache.clone());
+                                    ficherp_viewer(ui, &ficherp, &account.discord_user, self.common_mark_cache.clone(), &mut self.view_fiche_history);
                                 });
                             }
 
@@ -143,7 +154,6 @@ impl eframe::App for FicheSpace {
                     });
                 });
                 columns[2].with_layout(Layout::top_down(Align::Center), |ui| {
-                    ui.centered_and_justified(|ui| {
                         let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
                         if let Ok(all_account) = binding.read() {
                             ui.vertical(|ui| {
@@ -154,7 +164,7 @@ impl eframe::App for FicheSpace {
                                         let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
                                         let account = auth_lock.clone().account.unwrap();
                                         self.review_message = Option::from(ReviewMessage {
-                                            account,
+                                            discord_id: account.discord_user.id,
                                             content: "".to_string(),
                                             date: 0,
                                             is_private: false,
@@ -167,24 +177,18 @@ impl eframe::App for FicheSpace {
 
                                 ui.add_space(10.0);
 
-
-                                all_account.iter().filter(|account| !account.fiches.is_empty()).for_each(|account| {
-                                    ui.vertical(|ui| {
-                                        for ficherp in &account.fiches {
-                                            let account_ref: &FrontAccount = account;
-                                            let ficherp_ref: &FicheRP = ficherp;
-                                            for review_message in &ficherp_ref.messages {
-                                                frame.show(ui, |ui| {
-                                                    comment_bubble(ui, &review_message, self.common_mark_cache.clone())
-                                                });
-                                            }
-                                        }
-                                    });
+                                egui::ScrollArea::vertical().show(ui, |ui| {
+                                    if self.selected_fiche_account.is_some() {
+                                        self.selected_fiche_account.clone().unwrap().1.messages.iter().for_each(|review_message: &ReviewMessage| {
+                                            frame.show(ui, |ui| {
+                                                comment_bubble(ui, &review_message, self.common_mark_cache.clone())
+                                            });
+                                        });
+                                    }
                                 });
                             });
                         };
                     });
-                });
             });
         });
     }

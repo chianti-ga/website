@@ -2,16 +2,18 @@ use std::ops::Add;
 use std::str::SplitWhitespace;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use chrono::{NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use eframe::emath::Align;
 use egui::{Button, FontSelection, Image, Layout, OpenUrl, Response, RichText, TextBuffer, TextFormat, TextStyle};
 use egui::scroll_area::ScrollBarVisibility;
 use egui::text::LayoutJob;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
+use log::info;
 use strum::IntoEnumIterator;
+use web_time::{SystemTime, UNIX_EPOCH};
 
 use shared::discord::User;
-use shared::fiche_rp::{FicheRP, FicheState, FicheStateIter, Job, ReviewMessage, ScienceRank, ScienceRole, SecurityRank, SecurityRole};
+use shared::fiche_rp::{FicheRP, FicheState, FicheStateIter, FicheVersion, Job, MedicRank, MedicRole, ReviewMessage, ScienceRank, ScienceRole, SecurityRank, SecurityRole};
 use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 
@@ -50,7 +52,7 @@ pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Resp
     }).response
 }
 
-pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
+pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>, is_viewing: &mut bool) {
     let avatar_url = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, user.avatar);
 
     let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
@@ -58,12 +60,16 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
 
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
     ui.vertical(|ui| {
-        ui.vertical_centered(|ui| {
-            ui.horizontal(|ui| {
+        ui.horizontal(|ui| {
+            ui.vertical_centered(|ui| {
                 ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
+            });
 
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let history_btn = Button::image_and_text(Image::new(image_resolver("history.svg")).fit_to_original_size(1.0).shrink_to_fit().maintain_aspect_ratio(true), "Historique de la fiche");
-                if ui.add(history_btn).clicked() {}
+                if ui.add(history_btn).clicked() {
+                    *is_viewing = true;
+                }
             });
         });
         ui.horizontal(|ui| {
@@ -154,10 +160,9 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                 ui.selectable_value(&mut ficherp.job, Job::ClassD, Job::ClassD.to_string());
                 ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
                 ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Science");
-                ui.selectable_value(&mut ficherp.job, Job::Doctor, Job::Doctor.to_string());
+                ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Doctor(MedicRank::Beginner)), "Médecine");
                 ui.selectable_value(&mut ficherp.job, Job::Chaos, Job::Chaos.to_string());
                 ui.selectable_value(&mut ficherp.job, Job::Other("".to_string()), "Autres");
-
             });
 
             if ficherp.job.to_string().contains("Sécurité") {
@@ -228,7 +233,6 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             if ficherp.job.to_string().contains("Autres") {
                 ui.text_edit_singleline(job_text_buffer);
             }
-
         });
 
         ui.separator();
@@ -248,13 +252,24 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             let size = ui.available_size();
             ui.add_sized(size, egui::TextEdit::multiline(&mut ficherp.lore));
         });
-        ui.add_space(5.0);
+        ui.add_space(10.0);
 
         ui.vertical_centered(|ui| {
             if ui.button(get_string("ficherp.create.submit")).clicked() {
                 if ficherp.job.to_string().contains("Autres") {
                     ficherp.job = Job::Other(job_text_buffer.clone());
                 }
+
+                ficherp.submission_date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+                ficherp.version.push(FicheVersion {
+                    name: ficherp.name.clone(),
+                    job: ficherp.job.clone(),
+                    description: ficherp.description.clone(),
+                    lore: ficherp.lore.clone(),
+                    submission_date: ficherp.submission_date.clone(),
+                });
+
                 post_ficherp(ficherp);
             }
         });
@@ -262,6 +277,36 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
 }
 
 pub fn ficherp_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
+    ficherp_viewer_embed(ui, ficherp, user, cache);
+}
+
+pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selected_fiche_account_version: &mut Option<FicheVersion>, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
+    info!("{:?}",selected_fiche_account_version);
+
+    ui.horizontal(|ui| {
+        let label: RichText = RichText::new("Version").strong().text_style(TextStyle::Name("heading3".into()));
+
+        let mut selected_text: String = String::new();
+
+        if selected_fiche_account_version.is_none() {
+            selected_text.push_str("Choisir une version...");
+        } else {
+            let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(selected_fiche_account_version.clone().unwrap().submission_date as i64, 0));
+            selected_text = datetime.format("%d-%m-%Y").to_string();
+        }
+
+        egui::ComboBox::from_label(label).selected_text(&selected_text).show_ui(ui, |ui| {
+            ficherp.version.iter().for_each(|fiche_version: &FicheVersion| {
+                let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(fiche_version.submission_date as i64, 0));
+                let formatted_date = datetime.format("%d-%m-%Y").to_string();
+                ui.selectable_value(selected_fiche_account_version, Option::from(fiche_version.clone()), formatted_date);
+            });
+        });
+    });
+
+    ficherp_viewer_embed(ui, ficherp, user, cache);
+}
+pub fn ficherp_viewer_embed(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
     let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(ficherp.submission_date as i64, 0));
 
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
@@ -297,102 +342,6 @@ pub fn ficherp_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, 
             ui.separator();
         });
     });
-}
-
-pub fn edit_comment_window(ui: &mut egui::Ui, review_message: &mut ReviewMessage, cache: Arc<RwLock<CommonMarkCache>>) {
-    let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(review_message.date as i64, 0));
-
-    let formatted_date = datetime.format("%d-%m-%Y").to_string();
-    ui.vertical(|ui| {
-        ui.horizontal(|ui| {
-            ui.checkbox(&mut review_message.is_comment, "Commentaire ?");
-            if review_message.is_comment {
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.checkbox(&mut review_message.is_private, "Commentaire privé ?");
-                    review_message.set_state = FicheState::Comment;
-                });
-            } else {
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    egui::ComboBox::from_label("Statue de la fiche").selected_text(review_message.set_state.get_text()).show_ui(ui, |ui| {
-                        let state_iter: FicheStateIter = FicheState::iter();
-                        state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
-                            ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
-                        });
-                    });
-                });
-            }
-        });
-
-        ui.label(RichText::new("Commentaire : ").text_style(TextStyle::Name("heading3".into())).strong());
-
-        let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
-
-        egui::ScrollArea::vertical().id_source("scoll_comment_viewer").show(ui, |ui| {
-            let mut size = ui.available_size();
-            size.y = size.y / 3.0;
-            size.x *= 0.99;
-
-            ui.add_sized(size, egui::TextEdit::multiline(&mut review_message.content));
-
-            ui.label(RichText::new("Preview : ").text_style(TextStyle::Name("heading3".into())).strong());
-
-            CommonMarkViewer::new("comment_viewer").show(ui, &mut cache, &review_message.content);
-        });
-
-        ui.label(formatted_date);
-    });
-}
-
-pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: Arc<RwLock<CommonMarkCache>>) -> Response {
-    let account: &FrontAccount = &review_message.account;
-    let user: &User = &account.discord_user;
-    let avatar_url: String = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, user.avatar);
-
-    let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
-    let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(review_message.date as i64, 0));
-
-    let formatted_date = datetime.format("%d-%m-%Y").to_string();
-
-    let role: DiscordRole = if let Some(roles) = DiscordRole::from_role_ids(&account.discord_roles) {
-        let mut final_role = DiscordRole::Unknown;
-
-        if roles.contains(&DiscordRole::LeadScenarist) {
-            final_role = DiscordRole::LeadScenarist
-        } else if roles.contains(&DiscordRole::Scenarist) {
-            final_role = DiscordRole::Scenarist
-        } else if roles.contains(&DiscordRole::Moderator) {
-            final_role = DiscordRole::Scenarist
-        };
-        final_role
-    } else {
-        DiscordRole::Unknown
-    };
-
-    ui.vertical(|ui| {
-        ui.horizontal(|ui| {
-            ui.add(avatar_image);
-            ui.add_space(ui.min_rect().min.x);
-
-            ui.label(format!("[{}] {} ", role, user.username));
-            ui.add_space(ui.min_rect().min.x);
-
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                state_badge(ui, &review_message.set_state);
-            });
-        });
-
-        ui.separator();
-
-        ui.label(RichText::new("Commentaire : ").text_style(TextStyle::Name("heading3".into())).strong());
-
-        let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
-
-        egui::ScrollArea::vertical().id_source("scoll_comment_viewer").show(ui, |ui| {
-            CommonMarkViewer::new("comment_viewer").show(ui, &mut cache, &review_message.content);
-        });
-
-        ui.label(formatted_date);
-    }).response
 }
 
 pub fn state_badge(ui: &mut egui::Ui, state: &FicheState) {
