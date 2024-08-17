@@ -9,6 +9,7 @@ use oauth2::reqwest::async_http_client;
 use reqwest::{Client, Response};
 use serde_json::Value;
 use uuid::Uuid;
+
 use shared::discord::{DiscordAuthorizationInformation, GuildMember};
 use shared::user::Account;
 
@@ -34,9 +35,13 @@ pub async fn update_token(auth_id: &str, discord_id: &String, token_response: Ba
     let query = doc! {
         "discord_user.id" : discord_id
     };
+
+    let time_now: u64 = SystemTime::now().duration_since(UNIX_EPOCH).expect("invalid time").as_secs();
+
     let update_doc = doc! {
         "$set": {
             "token": to_bson(&token_response).unwrap(),
+            "last_renewal": to_bson(&time_now).unwrap(),
         }
     };
     accounts.update_one(query, update_doc).await.expect("Failed to update account for token change");
