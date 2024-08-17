@@ -13,31 +13,25 @@ pub struct FicheRP {
     pub lore: String,
     pub submission_date: u64,
     pub messages: Vec<ReviewMessage>,
-    pub version: Vec<FicheVersions>,
+    pub version: Vec<FicheVersion>,
     pub state: FicheState,
     //TODO:VEC RAPPORTS
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct FicheVersions {
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct FicheVersion {
     pub name: String,
     pub job: Job,
     pub description: String,
     pub lore: String,
-    pub submission_date: u128,
-}
-
-impl FicheVersions {
-    pub fn get_markdown_string(&mut self) -> String {
-        format!("**Nom**: {}\n---\n**Job** {}\n---\n**Description** {}\n---\n**Lore du personage** {}", &self.name, &self.job, &self.description, &self.lore)
-    }
+    pub submission_date: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ReviewMessage {
-    pub account: FrontAccount,
+    pub discord_id: String,
     pub content: String,
-    pub date: u128,
+    pub date: u64,
     pub is_private: bool,
     pub is_comment: bool,
     pub set_state: FicheState,
@@ -66,12 +60,12 @@ impl FicheState {
 }
 
 /**     JOB INFO STARTS HERE    **/
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub enum Job {
     Security(SecurityRole),
     Science(ScienceRole),
     ClassD,
-    Doctor,
+    Medic(MedicRole),
     SiteDirector,
     Chaos,
     Other(String)
@@ -101,6 +95,13 @@ impl Job {
             _ => None
         }
     }
+
+    pub fn get_medic_level(&self) -> Option<&MedicRank> {
+        match self {
+            Job::Medic(role) => Option::from(role.get_medic_level()),
+            _ => None
+        }
+    }
 }
 impl Display for Job {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -108,17 +109,18 @@ impl Display for Job {
             Job::Security(role) => write!(f, "Sécurité ({})", role),
             Job::Science(role) => write!(f, "Science ({})", role),
             Job::ClassD => write!(f, "Classe-D"),
-            Job::Doctor => write!(f, "Médecin"),
+            Job::Medic(role) => write!(f, "Médecine ({})", role),
             Job::SiteDirector => write!(f, "Directeur du Site"),
             Job::Chaos => write!(f, "Chaos"),
             Job::Other(string) => write!(f, "Autres ({})", string),
         }
     }
 }
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
 pub enum ScienceRole {
     Scientific(ScienceRank),
     Researcher(ScienceRank),
+    Doctor(ScienceRank),
     Supervisor(ScienceRank),
 }
 impl ScienceRole {
@@ -126,6 +128,7 @@ impl ScienceRole {
         return match self {
             ScienceRole::Scientific(level) => level,
             ScienceRole::Researcher(level) => level,
+            ScienceRole::Doctor(level) => level,
             ScienceRole::Supervisor(level) => level
         }
     }
@@ -135,11 +138,12 @@ impl Display for ScienceRole {
         match self {
             ScienceRole::Scientific(level) => write!(f, "Scientifique {}", level),
             ScienceRole::Researcher(level) => write!(f, "Chercheur {}", level),
+            ScienceRole::Doctor(level) => write!(f, "Docteur {}", level),
             ScienceRole::Supervisor(level) => write!(f, "Superviseur {}", level),
         }
     }
 }
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
 pub enum ScienceRank {
     Beginner,
     NoLevel,
@@ -155,7 +159,7 @@ impl Display for ScienceRank {
         }
     }
 }
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
 pub enum SecurityRole {
     SecurityOfficier(SecurityRank),
     Gunsmith(SecurityRank),
@@ -168,7 +172,6 @@ impl SecurityRole {
             SecurityRole::SecurityOfficier(level) => level,
             SecurityRole::TacticalAgent(level) => level,
             SecurityRole::Gunsmith(level) => level,
-
         }
     }
 }
@@ -181,7 +184,7 @@ impl Display for SecurityRole {
         }
     }
 }
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, EnumIter)]
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, EnumIter, Debug)]
 pub enum SecurityRank {
     Rct,
     Sdt,
@@ -225,6 +228,58 @@ impl Display for SecurityRank {
             SecurityRank::LtCol => write!(f, "Lieutenant-Colonel"),
             SecurityRank::Col => write!(f, "Colonel"),
             SecurityRank::Gen => write!(f, "Général"),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
+pub enum MedicRole {
+    Director,
+    DirectorAdj,
+    Manager,
+    Doctor(MedicRank),
+    Psychiatrist(MedicRank),
+    Surgeon(MedicRank),
+    Nurse,
+}
+
+impl Display for MedicRole {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MedicRole::Director => write!(f, "Directeur"),
+            MedicRole::DirectorAdj => write!(f, "Directeur Adjoint"),
+            MedicRole::Manager => write!(f, "Responsable"),
+            MedicRole::Doctor(rank) => write!(f, "Médecin {}", rank),
+            MedicRole::Psychiatrist(rank) => write!(f, "Psychiatre {}", rank),
+            MedicRole::Surgeon(rank) => write!(f, "Chirurgien {}", rank),
+            MedicRole::Nurse => write!(f, "Infirmier/Infirmière"),
+        }
+    }
+}
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
+pub enum MedicRank {
+    Beginner,
+    Confirmed,
+    Senior,
+}
+
+impl MedicRole {
+    fn get_medic_level(&self) -> Option<&MedicRank> {
+        match self {
+            MedicRole::Doctor(rank) => Option::from(rank),
+            MedicRole::Psychiatrist(rank) => Option::from(rank),
+            MedicRole::Surgeon(rank) => Option::from(rank),
+            _ => None
+        }
+    }
+}
+
+impl Display for MedicRank {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MedicRank::Beginner => write!(f, "Junior"),
+            MedicRank::Confirmed => write!(f, "Confirmé"),
+            MedicRank::Senior => write!(f, "Sénior")
         }
     }
 }
