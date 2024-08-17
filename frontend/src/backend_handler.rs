@@ -5,7 +5,7 @@ use ehttp::{Headers, Mode, Request};
 use lazy_static::lazy_static;
 use log::info;
 
-use shared::fiche_rp::FicheRP;
+use shared::fiche_rp::{FicheRP, ReviewMessage};
 use shared::user::FrontAccount;
 
 use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo};
@@ -63,6 +63,22 @@ pub fn post_ficherp(ficherp: &FicheRP) {
     let auth_id: String = wasm_cookies::get("auth_id").unwrap().unwrap();
     let api_url: String = format!("{}api/front/submit_ficherp?auth_id={}", get_api_path(), auth_id);
     let request: Request = post_json(api_url, serde_json::to_string(ficherp).unwrap().into_bytes());
+
+    ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
+        let mut result = result.unwrap();
+        info!("{}", &result.text().unwrap());
+
+        if result.status == 200 {
+            retrieve_accounts();
+            authenticate();
+        }
+    });
+}
+
+pub fn post_comment(comment: &ReviewMessage, ficherp_id: String) {
+    let auth_id: String = wasm_cookies::get("auth_id").unwrap().unwrap();
+    let api_url: String = format!("{}api/front/submit_comment?auth_id={}&fiche_id={}", get_api_path(), auth_id, ficherp_id);
+    let request: Request = post_json(api_url, serde_json::to_string(comment).unwrap().into_bytes());
 
     ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
