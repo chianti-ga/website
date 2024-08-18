@@ -17,9 +17,6 @@ use crate::backend_handler::post_comment;
 use crate::ui::components::fiche_components::state_badge;
 
 pub fn edit_comment_window(ui: &mut egui::Ui, ficherp_id: String, review_message: &mut ReviewMessage, cache: Arc<RwLock<CommonMarkCache>>) {
-    let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(review_message.date as i64, 0));
-
-    let formatted_date = datetime.format("%d-%m-%Y").to_string();
     ui.vertical(|ui| {
         ui.horizontal(|ui| {
             ui.checkbox(&mut review_message.is_comment, "Commentaire ?");

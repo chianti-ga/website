@@ -17,7 +17,7 @@ use crate::ui::components::fiche_components::{ficherp_bubble, ficherp_edit, fich
 pub struct FicheSpace {
     pub common_mark_cache: Arc<RwLock<CommonMarkCache>>,
     pub selected_fiche_account: Option<(FrontAccount, FicheRP)>,
-    pub selected_fiche_account_version: Option<FicheVersion>,
+    pub selected_fiche_version: Option<FicheVersion>,
     pub new_fiche: Option<FicheRP>,
     pub preview_fiche: bool,
     pub view_fiche_history: bool,
@@ -43,7 +43,14 @@ impl eframe::App for FicheSpace {
             egui::Window::new("Historique").open(&mut self.view_fiche_history).default_size([640.0, 960.0]).show(ctx, |ui| {
                 let user: User = self.selected_fiche_account.clone().unwrap().0.discord_user;
                 let ficherp: FicheRP = self.selected_fiche_account.clone().unwrap().1;
-                ficherp_history_viewer_window(ui, &ficherp, &mut self.selected_fiche_account_version.clone(), &user, self.common_mark_cache.clone());
+
+                if self.selected_fiche_version.is_none() {
+                    self.selected_fiche_version = Option::from(ficherp.version.get(0).unwrap().to_owned());
+                }
+
+                if let Some(fiche_version) = &mut self.selected_fiche_version {
+                    ficherp_history_viewer_window(ui, &ficherp, fiche_version, &user, self.common_mark_cache.clone());
+                }
             });
         }
 

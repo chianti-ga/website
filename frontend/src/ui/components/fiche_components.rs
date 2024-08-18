@@ -277,36 +277,6 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
 }
 
 pub fn ficherp_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
-    ficherp_viewer_embed(ui, ficherp, user, cache);
-}
-
-pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selected_fiche_account_version: &mut Option<FicheVersion>, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
-    info!("{:?}",selected_fiche_account_version);
-
-    ui.horizontal(|ui| {
-        let label: RichText = RichText::new("Version").strong().text_style(TextStyle::Name("heading3".into()));
-
-        let mut selected_text: String = String::new();
-
-        if selected_fiche_account_version.is_none() {
-            selected_text.push_str("Choisir une version...");
-        } else {
-            let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(selected_fiche_account_version.clone().unwrap().submission_date as i64, 0));
-            selected_text = datetime.format("%d-%m-%Y").to_string();
-        }
-
-        egui::ComboBox::from_label(label).selected_text(&selected_text).show_ui(ui, |ui| {
-            ficherp.version.iter().for_each(|fiche_version: &FicheVersion| {
-                let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(fiche_version.submission_date as i64, 0));
-                let formatted_date = datetime.format("%d-%m-%Y").to_string();
-                ui.selectable_value(selected_fiche_account_version, Option::from(fiche_version.clone()), formatted_date);
-            });
-        });
-    });
-
-    ficherp_viewer_embed(ui, ficherp, user, cache);
-}
-pub fn ficherp_viewer_embed(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
     let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(ficherp.submission_date as i64, 0));
 
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
@@ -343,6 +313,63 @@ pub fn ficherp_viewer_embed(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, c
         });
     });
 }
+
+pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selected_fiche_account_version: &mut FicheVersion, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
+    info!("{:?}",selected_fiche_account_version);
+
+    ui.horizontal(|ui| {
+        let label: RichText = RichText::new("Version").strong().text_style(TextStyle::Name("heading3".into()));
+
+        let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(selected_fiche_account_version.clone().submission_date as i64, 0));
+        let selected_text = datetime.format("%d-%m-%Y").to_string();
+
+
+        egui::ComboBox::from_label(label).selected_text(&selected_text).show_ui(ui, |ui| {
+            ficherp.version.iter().for_each(|fiche_version: &FicheVersion| {
+                let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(fiche_version.submission_date as i64, 0));
+                let formatted_date = datetime.format("%d-%m-%Y").to_string();
+                ui.selectable_value(selected_fiche_account_version, fiche_version.clone().to_owned(), formatted_date);
+            });
+        });
+    });
+
+    let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(selected_fiche_account_version.submission_date as i64, 0));
+
+    let formatted_date = datetime.format("%d-%m-%Y").to_string();
+    ui.vertical(|ui| {
+        ui.vertical_centered(|ui| {
+            ui.label(format!("{} | Fiche RP de {} | {}", user.username, selected_fiche_account_version.name, formatted_date));
+        });
+
+        ui.separator();
+
+        let mut layout_job = LayoutJob::default();
+
+        RichText::new("Job : ")
+            .text_style(TextStyle::Name("heading3".into())).strong()
+            .append_to(&mut layout_job, ui.style(), FontSelection::Default, Align::LEFT);
+
+        layout_job.append(&*selected_fiche_account_version.job.to_string(), 0.0, TextFormat { ..Default::default() });
+        ui.label(layout_job);
+
+        ui.separator();
+
+        let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
+
+        egui::ScrollArea::vertical().id_source("scoll_text_viewer").show(ui, |ui| {
+            ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
+
+            CommonMarkViewer::new("desc_viewer").show(ui, &mut cache, &selected_fiche_account_version.description);
+            ui.separator();
+
+            ui.label(RichText::new("Lore : ").strong().text_style(TextStyle::Name("heading3".into())));
+
+            CommonMarkViewer::new("lore_viewer").show(ui, &mut cache, &selected_fiche_account_version.lore);
+            ui.separator();
+        });
+    });
+}
+
 
 pub fn state_badge(ui: &mut egui::Ui, state: &FicheState) {
     let img_to_load: &str = match state {

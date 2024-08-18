@@ -87,7 +87,7 @@ impl App {
             fiche_space: FicheSpace {
                 common_mark_cache: Arc::new(RwLock::new(CommonMarkCache::default())),
                 selected_fiche_account: None,
-                selected_fiche_account_version: None,
+                selected_fiche_version: None,
                 new_fiche: None,
                 preview_fiche: false,
                 view_fiche_history: false,
