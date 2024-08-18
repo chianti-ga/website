@@ -120,8 +120,6 @@ pub async fn update_token_thread(dbclient: mongodb::Client) {
             while let Some(mut account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
                 let time_passed_since_renew: i64 = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) as i64 - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
 
-                println!("{}", time_passed_since_renew);
-
                 if time_passed_since_renew < 0 {
                     warn!("Can't renew token for {}({}) since it has expired", account.discord_user.username, account.discord_user.id);
                     update_auth_id(&account.discord_user.id, &Uuid::now_v7().to_string(), dbclient).await;
