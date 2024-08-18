@@ -11,7 +11,7 @@ use json_gettext::{get_text, JSONGetText, static_json_gettext_build};
 use lazy_static::lazy_static;
 
 use shared::user::FrontAccount;
-
+use shared::website_meta::WebsiteMeta;
 use crate::backend_handler::{authenticate, get_oath2_url};
 use crate::ui::select_space::SpacePanel;
 use crate::ui::spaces::fiche_space::FicheSpace;
@@ -61,6 +61,7 @@ lazy_static! {
     pub static ref GET_TEXT_CTX:Arc<JSONGetText<'static>>=Arc::new(static_json_gettext_build!("fr_FR";"fr_FR" => "assets/langs/fr_FR.json").unwrap());
     pub static ref AUTH_INFO:Arc<RwLock<AuthInfo>> = Arc::new(RwLock::new(AuthInfo::default()));
     pub static ref ALL_ACCOUNTS:Arc<RwLock<Vec<FrontAccount>>> = Arc::new(RwLock::new(vec![]));
+    pub static ref WHITELIST:Arc<RwLock<WebsiteMeta>> = Arc::new(RwLock::new(WebsiteMeta::default()));
 }
 
 impl App {
@@ -84,16 +85,18 @@ impl App {
         Self {
             location_url: cc.integration_info.web_info.location.url.clone(),
             is_ui_debug: false,
+
             fiche_space: FicheSpace {
                 common_mark_cache: Arc::new(RwLock::new(CommonMarkCache::default())),
                 selected_fiche_account: None,
                 selected_fiche_version: None,
                 new_fiche: None,
-                preview_fiche: false,
-                view_fiche_history: false,
                 review_message: None,
-                writing_message: false,
                 job_text_buffer: "".to_string(),
+                is_previewing_fiche: false,
+                is_writing_message: false,
+                is_viewing_fiche_history: false,
+                is_editing_existing_fiche: false,
             },
             space_panel: SpacePanel::new(),
         }

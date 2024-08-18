@@ -26,7 +26,7 @@ use uuid::Uuid;
 
 use shared::user::Account;
 
-use crate::api::front::{retrieve_accounts, retrieve_auth_account, submit_comment, submit_ficherp};
+use crate::api::front::{retrieve_accounts, retrieve_auth_account, retrieve_whitelist, submit_comment, submit_ficherp, submit_ficherp_modif};
 use crate::api::oauth2::{auth, callback};
 use crate::api::webhook::{embed_webhook, text_webhook};
 use crate::utils::auth_utils::{renew_token, update_auth_id};
@@ -83,6 +83,8 @@ async fn main() -> Result<()> {
             .service(retrieve_auth_account)
             .service(submit_ficherp)
             .service(submit_comment)
+            .service(submit_ficherp_modif)
+            .service(retrieve_whitelist)
             .service(Files::new("/", "dist").index_file("index.html"))
             .app_data(app_data.clone())
     })

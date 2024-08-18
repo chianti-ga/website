@@ -7,6 +7,7 @@
   "nav.btn.ficherp": "Fiche RP",
   "ficherp.create.fiche": "Créer une nouvelle Fiche RP",
   "ficherp.create.submit": "Soumettre la Fiche RP",
+  "ficherp.modif.invite": "Faire une modification",
   "ficherp.modif.submit": "Soumettre la modification",
   "ficherp.review_message.create": "Créer un nouveau commentaire"
 }

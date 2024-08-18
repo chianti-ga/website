@@ -3,6 +3,7 @@ pub mod research_report;
 pub mod user;
 pub mod discord;
 pub mod permissions;
+pub mod website_meta;
 
 #[cfg(test)]
 mod tests {

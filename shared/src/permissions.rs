@@ -1,5 +1,6 @@
 use std::fmt;
 use serde::{Deserialize, Serialize};
+use crate::fiche_rp::{FicheState, FicheVersion, Job, ReviewMessage};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum DiscordRole {

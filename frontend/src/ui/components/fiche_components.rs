@@ -2,24 +2,22 @@ use std::ops::Add;
 use std::str::SplitWhitespace;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::{NaiveDateTime, TimeZone, Utc};
 use eframe::emath::Align;
 use egui::{Button, FontSelection, Image, Layout, OpenUrl, Response, RichText, TextBuffer, TextFormat, TextStyle};
 use egui::scroll_area::ScrollBarVisibility;
 use egui::text::LayoutJob;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
-use log::info;
 use strum::IntoEnumIterator;
 use web_time::{SystemTime, UNIX_EPOCH};
 
 use shared::discord::User;
-use shared::fiche_rp::{FicheRP, FicheState, FicheStateIter, FicheVersion, Job, MedicRank, MedicRole, ReviewMessage, ScienceRank, ScienceRole, SecurityRank, SecurityRole};
-use shared::permissions::DiscordRole;
+use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, MedicRank, MedicRole, ScienceRank, ScienceRole, SecurityRank, SecurityRole};
 use shared::user::FrontAccount;
 
 use crate::app::{AuthInfo, get_string, image_resolver};
 use crate::app::AUTH_INFO;
-use crate::backend_handler::post_ficherp;
+use crate::backend_handler::{post_ficherp, post_ficherp_modif};
 
 pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Response {
     let avatar_url = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, user.avatar);
@@ -52,7 +50,7 @@ pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Resp
     }).response
 }
 
-pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>, is_viewing: &mut bool) {
+pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>, is_viewing: &mut bool, mut is_editing_existing_fiche: &mut bool, new_fiche: &mut Option<FicheRP>, selected_fiche_account: &mut Option<(FrontAccount, FicheRP)>) {
     let avatar_url = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, user.avatar);
 
     let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
@@ -96,7 +94,7 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
 
         let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
 
-        let height = ui.available_size().y * 0.98;
+        let height = ui.available_size().y * 0.95;
 
         egui::ScrollArea::vertical().max_height(height).id_source("scoll_text_viewer").show(ui, |ui| {
             ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
@@ -108,10 +106,23 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
 
             CommonMarkViewer::new("lore_viewer").show(ui, &mut cache, &ficherp.lore);
         });
+
+        ui.add_space(5.0);
+
+        ui.vertical_centered(|ui| {
+            if ficherp.state == FicheState::RequestModification {
+                if ui.button(get_string("ficherp.modif.invite")).clicked() {
+                    *new_fiche = Option::from(selected_fiche_account.clone().unwrap().1);
+                    *selected_fiche_account = None;
+                    *is_editing_existing_fiche = true;
+                }
+            }
+        });
+
     });
 }
 
-pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mut bool, job_text_buffer: &mut String) {
+pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mut bool, job_text_buffer: &mut String, is_editing_existing_fiche: &mut bool) {
     let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
     let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
     let account = auth_lock.clone().account.unwrap();
@@ -255,22 +266,42 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
         ui.add_space(10.0);
 
         ui.vertical_centered(|ui| {
-            if ui.button(get_string("ficherp.create.submit")).clicked() {
-                if ficherp.job.to_string().contains("Autres") {
-                    ficherp.job = Job::Other(job_text_buffer.clone());
+            if *is_editing_existing_fiche {
+                if ui.button(get_string("ficherp.modif.invite")).clicked() {
+                    if ficherp.job.to_string().contains("Autres") {
+                        ficherp.job = Job::Other(job_text_buffer.clone());
+                    }
+
+                    ficherp.submission_date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+                    ficherp.version.push(FicheVersion {
+                        name: ficherp.name.clone(),
+                        job: ficherp.job.clone(),
+                        description: ficherp.description.clone(),
+                        lore: ficherp.lore.clone(),
+                        submission_date: ficherp.submission_date.clone(),
+                    });
+
+                    post_ficherp_modif(ficherp);
                 }
+            } else {
+                if ui.button(get_string("ficherp.create.submit")).clicked() {
+                    if ficherp.job.to_string().contains("Autres") {
+                        ficherp.job = Job::Other(job_text_buffer.clone());
+                    }
 
-                ficherp.submission_date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                    ficherp.submission_date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-                ficherp.version.push(FicheVersion {
-                    name: ficherp.name.clone(),
-                    job: ficherp.job.clone(),
-                    description: ficherp.description.clone(),
-                    lore: ficherp.lore.clone(),
-                    submission_date: ficherp.submission_date.clone(),
-                });
+                    ficherp.version.push(FicheVersion {
+                        name: ficherp.name.clone(),
+                        job: ficherp.job.clone(),
+                        description: ficherp.description.clone(),
+                        lore: ficherp.lore.clone(),
+                        submission_date: ficherp.submission_date.clone(),
+                    });
 
-                post_ficherp(ficherp);
+                    post_ficherp(ficherp);
+                }
             }
         });
     });
@@ -315,8 +346,6 @@ pub fn ficherp_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, 
 }
 
 pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selected_fiche_account_version: &mut FicheVersion, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
-    info!("{:?}",selected_fiche_account_version);
-
     ui.horizontal(|ui| {
         let label: RichText = RichText::new("Version").strong().text_style(TextStyle::Name("heading3".into()));
 

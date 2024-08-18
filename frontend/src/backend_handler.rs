@@ -7,8 +7,8 @@ use log::info;
 
 use shared::fiche_rp::{FicheRP, ReviewMessage};
 use shared::user::FrontAccount;
-
-use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo};
+use shared::website_meta::WebsiteMeta;
+use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo, WHITELIST};
 
 pub const IS_DEBUG: bool = cfg!(debug_assertions);
 
@@ -33,7 +33,8 @@ pub fn authenticate() {
                     }
                     Err(_) => {}
                 };
-                retrieve_accounts()
+                retrieve_accounts();
+                retrieve_whitelist();
             }
         });
     }
@@ -59,6 +60,26 @@ pub fn retrieve_accounts() {
     });
 }
 
+pub fn retrieve_whitelist() {
+    let auth_id: String = wasm_cookies::get("auth_id").unwrap().unwrap();
+    let api_url: String = format!("{}api/front/retrieve_whitelist?auth_id={}", get_api_path(), auth_id);
+    let request: Request = Request::get(api_url);
+
+    ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
+        let mut result = result.unwrap();
+        info!("{}", &result.text().unwrap());
+        if result.status == 200 {
+            let whitelist: WebsiteMeta = result.clone().json().unwrap();
+            match WHITELIST.clone().write() {
+                Ok(mut lock) => {
+                    *lock = whitelist;
+                }
+                Err(_) => {}
+            };
+        }
+    });
+}
+
 pub fn post_ficherp(ficherp: &FicheRP) {
     let auth_id: String = wasm_cookies::get("auth_id").unwrap().unwrap();
     let api_url: String = format!("{}api/front/submit_ficherp?auth_id={}", get_api_path(), auth_id);
@@ -69,7 +90,21 @@ pub fn post_ficherp(ficherp: &FicheRP) {
         info!("{}", &result.text().unwrap());
 
         if result.status == 200 {
-            retrieve_accounts();
+            authenticate();
+        }
+    });
+}
+
+pub fn post_ficherp_modif(ficherp: &FicheRP) {
+    let auth_id: String = wasm_cookies::get("auth_id").unwrap().unwrap();
+    let api_url: String = format!("{}api/front/submit_ficherp_modif?auth_id={}&fiche_id={}", get_api_path(), auth_id, &ficherp.id);
+    let request: Request = post_json(api_url, serde_json::to_string(ficherp).unwrap().into_bytes());
+
+    ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
+        let mut result = result.unwrap();
+        info!("{}", &result.text().unwrap());
+
+        if result.status == 200 {
             authenticate();
         }
     });
@@ -85,7 +120,6 @@ pub fn post_comment(comment: &ReviewMessage, ficherp_id: String) {
         info!("{}", &result.text().unwrap());
 
         if result.status == 200 {
-            retrieve_accounts();
             authenticate();
         }
     });

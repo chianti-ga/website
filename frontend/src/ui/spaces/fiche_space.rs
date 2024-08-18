@@ -19,18 +19,19 @@ pub struct FicheSpace {
     pub selected_fiche_account: Option<(FrontAccount, FicheRP)>,
     pub selected_fiche_version: Option<FicheVersion>,
     pub new_fiche: Option<FicheRP>,
-    pub preview_fiche: bool,
-    pub view_fiche_history: bool,
-
     pub review_message: Option<ReviewMessage>,
-    pub writing_message: bool,
     pub job_text_buffer: String,
+
+    pub is_previewing_fiche: bool,
+    pub is_writing_message: bool,
+    pub is_viewing_fiche_history: bool,
+    pub is_editing_existing_fiche: bool,
 }
 
 impl eframe::App for FicheSpace {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if self.preview_fiche {
-            egui::Window::new("Preview").open(&mut self.preview_fiche).default_size([640.0, 960.0]).show(ctx, |ui| {
+        if self.is_previewing_fiche {
+            egui::Window::new("Preview").open(&mut self.is_previewing_fiche).default_size([640.0, 960.0]).show(ctx, |ui| {
                 let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
                 let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
                 let account = auth_lock.clone().account.unwrap();
@@ -39,8 +40,8 @@ impl eframe::App for FicheSpace {
             });
         }
 
-        if self.view_fiche_history {
-            egui::Window::new("Historique").open(&mut self.view_fiche_history).default_size([640.0, 960.0]).show(ctx, |ui| {
+        if self.is_viewing_fiche_history {
+            egui::Window::new("Historique").open(&mut self.is_viewing_fiche_history).default_size([640.0, 960.0]).show(ctx, |ui| {
                 let user: User = self.selected_fiche_account.clone().unwrap().0.discord_user;
                 let ficherp: FicheRP = self.selected_fiche_account.clone().unwrap().1;
 
@@ -54,8 +55,8 @@ impl eframe::App for FicheSpace {
             });
         }
 
-        if self.writing_message {
-            egui::Window::new("Ecriture commentaire").open(&mut self.writing_message).default_size([640.0, 600.0]).resizable(false).show(ctx, |ui| {
+        if self.is_writing_message {
+            egui::Window::new("Ecriture commentaire").open(&mut self.is_writing_message).default_size([640.0, 600.0]).resizable(false).show(ctx, |ui| {
                 let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
                 let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
                 let account = auth_lock.clone().account.unwrap();
@@ -148,13 +149,13 @@ impl eframe::App for FicheSpace {
                         ui.vertical_centered(|ui| {
                             if let Some((account, ficherp)) = self.selected_fiche_account.clone() {
                                 frame.show(ui, |ui| {
-                                    ficherp_viewer(ui, &ficherp, &account.discord_user, self.common_mark_cache.clone(), &mut self.view_fiche_history);
+                                    ficherp_viewer(ui, &ficherp, &account.discord_user, self.common_mark_cache.clone(), &mut self.is_viewing_fiche_history, &mut self.is_editing_existing_fiche, &mut self.new_fiche, &mut self.selected_fiche_account);
                                 });
                             }
 
                             if let Some(ficherp) = &mut self.new_fiche {
                                 frame.show(ui, |ui| {
-                                    ficherp_edit(ui, ficherp, &mut self.preview_fiche, &mut self.job_text_buffer)
+                                    ficherp_edit(ui, ficherp, &mut self.is_previewing_fiche, &mut self.job_text_buffer, &mut self.is_editing_existing_fiche)
                                 });
                             }
                         });
@@ -178,7 +179,7 @@ impl eframe::App for FicheSpace {
                                             is_comment: false,
                                             set_state: FicheState::Waiting,
                                         });
-                                        self.writing_message = true;
+                                        self.is_writing_message = true;
                                     }
                                 });
 
