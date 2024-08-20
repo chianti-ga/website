@@ -1,5 +1,5 @@
 use std::future::IntoFuture;
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, TryLockResult};
 
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
@@ -9,7 +9,8 @@ use egui::style::ScrollStyle;
 use egui_commonmark::CommonMarkCache;
 use json_gettext::{get_text, JSONGetText, static_json_gettext_build};
 use lazy_static::lazy_static;
-
+use log::{error, warn};
+use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 use shared::website_meta::WebsiteMeta;
 use crate::backend_handler::{authenticate, get_oath2_url};
@@ -27,12 +28,14 @@ pub struct App {
 pub struct AuthInfo {
     pub authenticated: bool,
     pub account: Option<FrontAccount>,
+    pub website_meta: WebsiteMeta
 }
 impl Default for AuthInfo {
     fn default() -> Self {
         AuthInfo {
             authenticated: false,
             account: None,
+            website_meta: Default::default(),
         }
     }
 }
@@ -42,26 +45,26 @@ pub struct SelectedSpace {
 impl Default for SelectedSpace {
     fn default() -> Self {
         SelectedSpace {
-            selected_space: Space::eSelection
+            selected_space: Space::Eselection
         }
     }
 }
 #[derive(Copy, Clone)]
 pub enum Space {
-    eSelection,
-    eSpaceSelection,
-    eAdminSpace,
-    eFicheSpace,
-    eScienceSpace,
-    eSecuritySpace,
+    Eselection,
+    EspaceSelection,
+    EadminSpace,
+    EficheSpace,
+    EscienceSpace,
+    EsecuritySpace,
 }
 
 lazy_static! {
-    pub static ref SELECTED_SPACE:Arc<Mutex<SelectedSpace>> = Arc::new(Mutex::new(SelectedSpace::default()));
+    pub static ref SELECTED_ROLE:Arc<RwLock<DiscordRole>> = Arc::new(RwLock::new(DiscordRole::User));
+    pub static ref SELECTED_SPACE:Arc<RwLock<SelectedSpace>> = Arc::new(RwLock::new(SelectedSpace::default()));
     pub static ref GET_TEXT_CTX:Arc<JSONGetText<'static>>=Arc::new(static_json_gettext_build!("fr_FR";"fr_FR" => "assets/langs/fr_FR.json").unwrap());
     pub static ref AUTH_INFO:Arc<RwLock<AuthInfo>> = Arc::new(RwLock::new(AuthInfo::default()));
     pub static ref ALL_ACCOUNTS:Arc<RwLock<Vec<FrontAccount>>> = Arc::new(RwLock::new(vec![]));
-    pub static ref WHITELIST:Arc<RwLock<WebsiteMeta>> = Arc::new(RwLock::new(WebsiteMeta::default()));
 }
 
 impl App {
@@ -87,6 +90,7 @@ impl App {
             is_ui_debug: false,
 
             fiche_space: FicheSpace {
+                selected_role: DiscordRole::User,
                 common_mark_cache: Arc::new(RwLock::new(CommonMarkCache::default())),
                 selected_fiche_account: None,
                 selected_fiche_version: None,
@@ -98,6 +102,7 @@ impl App {
                 is_viewing_fiche_history: false,
                 is_editing_existing_fiche: false,
             },
+
             space_panel: SpacePanel::new(),
         }
     }
@@ -143,39 +148,65 @@ impl eframe::App for App {
             egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
                     ui.horizontal(|ui| {
-                        match AUTH_INFO.clone().read() {
+                        match AUTH_INFO.clone().try_read() {
                             Ok(auth_info) => {
                                 let account: FrontAccount = auth_info.account.clone().unwrap();
+
                                 if ui.button(get_string("nav.btn.home")).clicked() {
-                                    SELECTED_SPACE.lock().unwrap().selected_space = Space::eSelection;
+                                    SELECTED_SPACE.write().unwrap().selected_space = Space::Eselection;
                                 };
                                 if ui.button(get_string("nav.btn.ficherp")).clicked() {
-                                    SELECTED_SPACE.lock().unwrap().selected_space = Space::eFicheSpace;
+                                    SELECTED_SPACE.write().unwrap().selected_space = Space::EficheSpace;
                                 };
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    #[cfg(debug_assertions)]
                                     ui.label(format!("Connecté en tant que : {} ({})", account.discord_user.username, account.discord_user.id));
 
                                     #[cfg(debug_assertions)]
-                                    ui.toggle_value(&mut self.is_ui_debug, "debug")
+                                    ui.toggle_value(&mut self.is_ui_debug, "debug");
+
+                                    match SELECTED_ROLE.try_write() {
+                                        Ok(mut lock) => {
+                                            egui::ComboBox::from_label("Voir en tant que").selected_text(lock.to_string()).show_ui(ui, |ui| {
+                                                if let Some(roles) = DiscordRole::from_role_ids(&account.discord_roles) {
+                                                    ui.selectable_value(&mut *lock, DiscordRole::User, DiscordRole::User.to_string());
+                                                    roles.iter().for_each(|role| {
+                                                        ui.selectable_value(&mut *lock, role.clone(), role.to_string());
+                                                    });
+                                                    if auth_info.website_meta.whitelist.contains(&account.discord_user.id) {
+                                                        ui.selectable_value(&mut *lock, DiscordRole::PlatformAdmin, DiscordRole::PlatformAdmin.to_string());
+                                                    }
+                                                }
+                                            });
+                                        },
+                                        Err(err) => {
+                                            warn!("Waiting for lock : \n {}", err.to_string());
+                                        }
+                                    }
+
+
                                 });
                             }
-                            Err(_) => {}
+                            Err(err) => {
+                                warn!("Waiting for lock : \n {}", err.to_string());
+                            }
                         };
                     })
                 });
             });
-            let selected_space: Space = SELECTED_SPACE.lock().unwrap().selected_space;
+
+            let selected_space: Space = SELECTED_SPACE.read().unwrap().selected_space;
             match selected_space {
-                Space::eSelection => self.space_panel.update(ctx, frame),
-                Space::eSpaceSelection => {}
-                Space::eAdminSpace => {}
-                Space::eFicheSpace => self.fiche_space.update(ctx, frame),
-                Space::eScienceSpace => {}
-                Space::eSecuritySpace => {}
+                Space::Eselection => self.space_panel.update(ctx, frame),
+                Space::EspaceSelection => {}
+                Space::EadminSpace => {}
+                Space::EficheSpace => self.fiche_space.update(ctx, frame),
+                Space::EscienceSpace => {}
+                Space::EsecuritySpace => {}
             }
 
             egui::TopBottomPanel::bottom("botton_panel").show(ctx, |ui| {
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
                     footer(ui);
                     egui::warn_if_debug_build(ui);
                 });

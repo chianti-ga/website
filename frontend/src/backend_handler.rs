@@ -8,7 +8,9 @@ use log::info;
 use shared::fiche_rp::{FicheRP, ReviewMessage};
 use shared::user::FrontAccount;
 use shared::website_meta::WebsiteMeta;
-use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo, WHITELIST};
+use crate::App;
+use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo};
+use crate::ui::spaces::fiche_space::FicheSpace;
 
 pub const IS_DEBUG: bool = cfg!(debug_assertions);
 
@@ -45,7 +47,7 @@ pub fn retrieve_accounts() {
     let api_url: String = format!("{}api/front/retrieve_accounts?auth_id={}", get_api_path(), auth_id);
     let mut request: Request = Request::get(api_url);
 
-    ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
+    ehttp::fetch(request, |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
         info!("{}", &result.text().unwrap());
         if result.status == 200 {
@@ -70,9 +72,9 @@ pub fn retrieve_whitelist() {
         info!("{}", &result.text().unwrap());
         if result.status == 200 {
             let whitelist: WebsiteMeta = result.clone().json().unwrap();
-            match WHITELIST.clone().write() {
+            match AUTH_INFO.clone().write() {
                 Ok(mut lock) => {
-                    *lock = whitelist;
+                    lock.website_meta = whitelist;
                 }
                 Err(_) => {}
             };

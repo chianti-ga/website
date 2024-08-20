@@ -18,7 +18,7 @@ pub struct Account {
     pub banned: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct FrontAccount {
     pub discord_user: User,
     pub discord_roles: Vec<String>,

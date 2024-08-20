@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 use crate::user::FrontAccount;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct FicheRP {
     pub id: String,
     pub name: String,
@@ -27,7 +27,7 @@ pub struct FicheVersion {
     pub submission_date: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct ReviewMessage {
     pub discord_id: String,
     pub content: String,
@@ -72,25 +72,25 @@ pub enum Job {
 }
 impl Job {
     pub fn get_science_role(&self) -> Option<&ScienceRole> {
-        return match self {
+        match self {
             Job::Science(role) => Option::from(role),
             _ => None
         }
     }
     pub fn get_security_role(&self) -> Option<&SecurityRole> {
-        return match self {
+        match self {
             Job::Security(role) => Option::from(role),
             _ => None
         }
     }
     pub fn get_science_level(&self) -> Option<&ScienceRank> {
-        return match self {
+        match self {
             Job::Science(role) => Option::from(role.get_science_level()),
             _ => None
         }
     }
     pub fn get_security_level(&self) -> Option<&SecurityRank> {
-        return match self {
+        match self {
             Job::Security(role) => Option::from(role.get_security_level()),
             _ => None
         }

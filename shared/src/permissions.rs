@@ -1,14 +1,13 @@
 use std::fmt;
-use serde::{Deserialize, Serialize};
-use crate::fiche_rp::{FicheState, FicheVersion, Job, ReviewMessage};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum DiscordRole {
+    PlatformAdmin,
     Admin,
     Moderator,
     LeadScenarist,
     Scenarist,
-    Unknown
+    User
 }
 
 impl DiscordRole {
@@ -39,6 +38,8 @@ impl DiscordRole {
             DiscordRole::Moderator => "Cette personne est chargée d’appliquer la modération.",
             DiscordRole::LeadScenarist => "Cette personne est un chef scénariste.\nIl décide de l'acceptation finale de votre fiche.",
             DiscordRole::Scenarist => "Cette personne est un scénariste.\n Il donne son avis sur votre fiche.\nIl peut vous demander des modifications ou la refuser.",
+            DiscordRole::User => "Utilisateur",
+            DiscordRole::PlatformAdmin => "Administrateur platforme",
             _ => "unknown role"
         }
     }
@@ -57,6 +58,13 @@ impl DiscordRole {
 
 impl fmt::Display for DiscordRole {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.role_summary())
+        match self {
+            DiscordRole::PlatformAdmin => write!(f, "Administrateur de la platforme"),
+            DiscordRole::Admin => write!(f, "Administrateur"),
+            DiscordRole::Moderator => write!(f, "Modérateur"),
+            DiscordRole::LeadScenarist => write!(f, "Responsable scénariste"),
+            DiscordRole::Scenarist => write!(f, "Scénariste"),
+            DiscordRole::User => write!(f, "Utilisateur"),
+        }
     }
 }

@@ -1,39 +1,56 @@
-use std::sync::{Arc, RwLock, RwLockWriteGuard};
+use std::sync::{Arc, RwLock, RwLockWriteGuard, TryLockResult};
 
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use eframe::emath::Align;
 use egui::{Image, Layout, Response, RichText, TextStyle};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
+use log::warn;
 use strum::IntoEnumIterator;
 use web_time::{SystemTime, UNIX_EPOCH};
 
 use shared::discord::User;
-use shared::fiche_rp::{FicheState, FicheStateIter, ReviewMessage};
+use shared::fiche_rp::{FicheRP, FicheState, FicheStateIter, ReviewMessage};
 use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 
-use crate::app::ALL_ACCOUNTS;
+use crate::app::{AuthInfo, ALL_ACCOUNTS, AUTH_INFO, SELECTED_ROLE};
 use crate::backend_handler::post_comment;
 use crate::ui::components::fiche_components::state_badge;
 
-pub fn edit_comment_window(ui: &mut egui::Ui, ficherp_id: String, review_message: &mut ReviewMessage, cache: Arc<RwLock<CommonMarkCache>>) {
+pub fn edit_comment_window(ui: &mut egui::Ui, ficherp_id: String, review_message: &mut ReviewMessage, cache: Arc<RwLock<CommonMarkCache>>, selected_fiche_account: &mut Option<(FrontAccount, FicheRP)>) -> bool {
+    let mut close: bool = false;
     ui.vertical(|ui| {
+        match SELECTED_ROLE.try_read() {
+            Ok(role_lock) => {
         ui.horizontal(|ui| {
-            ui.checkbox(&mut review_message.is_comment, "Commentaire ?");
-            if review_message.is_comment {
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.checkbox(&mut review_message.is_private, "Commentaire privé ?");
-                    review_message.set_state = FicheState::Comment;
-                });
-            } else {
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    egui::ComboBox::from_label("Statue de la fiche").selected_text(review_message.set_state.get_text()).show_ui(ui, |ui| {
-                        let state_iter: FicheStateIter = FicheState::iter();
-                        state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
-                            ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
+            if *role_lock != DiscordRole::User {
+                ui.checkbox(&mut review_message.is_comment, "Commentaire ?");
+                if review_message.is_comment {
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.checkbox(&mut review_message.is_private, "Commentaire privé ?");
+                        review_message.set_state = FicheState::Comment;
+                    });
+                } else {
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        egui::ComboBox::from_label("Statue de la fiche").selected_text(review_message.set_state.get_text()).show_ui(ui, |ui| {
+                            let state_iter: FicheStateIter = FicheState::iter();
+
+                            if *role_lock == DiscordRole::Admin || *role_lock == DiscordRole::PlatformAdmin {
+                                state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
+                                    ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
+                                });
+                            } else if *role_lock == DiscordRole::Scenarist {
+                                ui.selectable_value(&mut review_message.set_state, FicheState::StaffValidated, FicheState::StaffValidated.get_text());
+                            } else if *role_lock == DiscordRole::LeadScenarist {
+                                state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
+                                    ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
+                                });
+                            }
                         });
                     });
-                });
+                }
+            } else {
+                review_message.set_state = FicheState::Comment;
             }
         });
 
@@ -57,9 +74,18 @@ pub fn edit_comment_window(ui: &mut egui::Ui, ficherp_id: String, review_message
             if ui.button("Poster le commentaire/réponse").clicked() {
                 review_message.date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
                 post_comment(review_message, ficherp_id);
+
+                *selected_fiche_account = None; // Close current view
+                close = true;
             }
         });
+            }
+            Err(err) => {
+                warn!("Can't get a read lock : \n {}", err)
+            }
+        }
     });
+    close
 }
 
 pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: Arc<RwLock<CommonMarkCache>>) -> Response {
@@ -71,35 +97,40 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
     let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
     let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(review_message.date as i64, 0));
 
-    let formatted_date = datetime.format("%d-%m-%Y").to_string();
+    let formatted_date: String = datetime.format("%d-%m-%Y").to_string();
 
-    let role: DiscordRole = if let Some(roles) = DiscordRole::from_role_ids(&account.discord_roles) {
-        let mut final_role = DiscordRole::Unknown;
-
+    // we privilege certain roles because a user can have several roles that match
+    let user_role = if AUTH_INFO.try_read().unwrap().website_meta.whitelist.contains(&account.discord_user.id) {
+        DiscordRole::PlatformAdmin
+    } else if let Some(roles) = DiscordRole::from_role_ids(&account.discord_roles) {
         if roles.contains(&DiscordRole::LeadScenarist) {
-            final_role = DiscordRole::LeadScenarist
+            DiscordRole::LeadScenarist
+        } else if roles.contains(&DiscordRole::Admin) {
+            DiscordRole::Admin
         } else if roles.contains(&DiscordRole::Scenarist) {
-            final_role = DiscordRole::Scenarist
-        } else if roles.contains(&DiscordRole::Moderator) {
-            final_role = DiscordRole::Scenarist
-        };
-        final_role
+            DiscordRole::Scenarist
+        } else {
+            DiscordRole::User
+        }
     } else {
-        DiscordRole::Unknown
+        DiscordRole::User
     };
 
     ui.vertical(|ui| {
         ui.horizontal(|ui| {
             ui.add(avatar_image);
-            ui.add_space(ui.min_rect().min.x);
 
-            ui.label(format!("[{}] {} ", role, user.username));
-            ui.add_space(ui.min_rect().min.x);
+            ui.add_space(ui.min_rect().min.x * 0.065);
+
+            ui.label(format!("[{}] {} ", user_role.to_string(), user.username));
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 state_badge(ui, &review_message.set_state);
             });
         });
+        ui.separator();
+
+        ui.label(RichText::new(user_role.role_summary()).strong());
 
         ui.separator();
 
@@ -110,7 +141,10 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
         egui::ScrollArea::vertical().id_source(&review_message.content).show(ui, |ui| {
             CommonMarkViewer::new("comment_viewer").show(ui, &mut cache, &review_message.content);
         });
+        ui.separator();
 
-        ui.label(formatted_date);
+        ui.vertical_centered(|ui| {
+            ui.label(format!("Publié le {}", formatted_date));
+        });
     }).response
 }

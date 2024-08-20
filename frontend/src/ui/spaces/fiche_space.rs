@@ -3,11 +3,12 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 use eframe::egui;
 use eframe::emath::Align;
 use eframe::epaint::{Margin, Rounding};
-use egui::{hex_color, Layout, Sense, Stroke, Widget};
+use egui::{hex_color, CursorIcon, Layout, Sense, Stroke, Widget};
 use egui_commonmark::CommonMarkCache;
 
 use shared::discord::User;
 use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, ReviewMessage};
+use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 
 use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo, get_string};
@@ -15,6 +16,7 @@ use crate::ui::components::comment_components::{comment_bubble, edit_comment_win
 use crate::ui::components::fiche_components::{ficherp_bubble, ficherp_edit, ficherp_history_viewer_window, ficherp_viewer, ficherp_viewer_window};
 
 pub struct FicheSpace {
+    pub selected_role: DiscordRole,
     pub common_mark_cache: Arc<RwLock<CommonMarkCache>>,
     pub selected_fiche_account: Option<(FrontAccount, FicheRP)>,
     pub selected_fiche_version: Option<FicheVersion>,
@@ -27,6 +29,25 @@ pub struct FicheSpace {
     pub is_viewing_fiche_history: bool,
     pub is_editing_existing_fiche: bool,
 }
+
+//FIND A WAY TO UPDATE CURRENT FICHERP VIEW
+/*
+impl FicheSpace {
+    pub fn test(mut self){
+        let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
+
+        if let Some(fiche_account) = self.selected_fiche_account.clone() {
+            if let Ok(all_account) = binding.read() {
+                if all_account.contains(&fiche_account.0) {
+                    let account: FrontAccount = all_account.iter().find(|x1| x1.discord_user.id == fiche_account.0.discord_user.id).unwrap().clone();
+                    let ficherp: FicheRP = account.fiches.iter().find(|x| x.id==fiche_account.1.id).unwrap().clone();
+
+                    self.selected_fiche_account = Option::from((account, ficherp));
+                }
+            };
+        }
+    }
+}*/
 
 impl eframe::App for FicheSpace {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -55,17 +76,24 @@ impl eframe::App for FicheSpace {
             });
         }
 
+        // a bit a fuckery happening here :D
         if self.is_writing_message {
-            egui::Window::new("Ecriture commentaire").open(&mut self.is_writing_message).default_size([640.0, 600.0]).resizable(false).show(ctx, |ui| {
-                let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
-                let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
-                let account = auth_lock.clone().account.unwrap();
-                let user: User = account.discord_user;
+            if self.review_message.is_some() {
+                let window = egui::Window::new("Ecriture commentaire").open(&mut self.is_writing_message).default_size([640.0, 600.0]).resizable(false).show(ctx, |ui| {
+                    let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+                    let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
+                    let account = auth_lock.clone().account.unwrap();
+                    let user: User = account.discord_user;
 
-                if let Some(review_message) = &mut self.review_message {
-                    edit_comment_window(ui, self.selected_fiche_account.clone().unwrap().1.id, review_message, self.common_mark_cache.clone());
-                }
-            });
+                    if let Some(review_message) = &mut self.review_message {
+                        if edit_comment_window(ui, self.selected_fiche_account.clone().unwrap().1.id, review_message, self.common_mark_cache.clone(), &mut self.selected_fiche_account) {
+                            self.review_message = None;
+                        }
+                    }
+                });
+            } else {
+                self.is_writing_message = false
+            }
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -102,7 +130,6 @@ impl eframe::App for FicheSpace {
                             ui.vertical(|ui| {
                                 ui.horizontal(|ui| {
                                     //TODO: FILTERING, creation etc
-                                    ui.label("MENUBAR");
                                     if ui.button(get_string("ficherp.create.fiche")).clicked() {
                                         self.selected_fiche_account = None;
                                         self.new_fiche = Option::from(FicheRP {
@@ -131,7 +158,7 @@ impl eframe::App for FicheSpace {
 
                                                 let response = ui.allocate_rect(bubble_rec.rect, Sense::click());
 
-                                                if response.clicked() {
+                                                if response.on_hover_cursor(CursorIcon::PointingHand).clicked() {
                                                     self.new_fiche = None;
                                                     self.selected_fiche_account = Some((account_ref.clone(), ficherp_ref.clone()));
                                                 };
@@ -165,23 +192,24 @@ impl eframe::App for FicheSpace {
                         let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
                         if let Ok(all_account) = binding.read() {
                             ui.vertical(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.label("MENUBAR");
-                                    if ui.button(get_string("ficherp.review_message.create")).clicked() {
-                                        let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
-                                        let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
-                                        let account = auth_lock.clone().account.unwrap();
-                                        self.review_message = Option::from(ReviewMessage {
-                                            discord_id: account.discord_user.id,
-                                            content: "".to_string(),
-                                            date: 0,
-                                            is_private: false,
-                                            is_comment: false,
-                                            set_state: FicheState::Waiting,
-                                        });
-                                        self.is_writing_message = true;
-                                    }
-                                });
+                                if self.selected_fiche_account.is_some() {
+                                    ui.horizontal(|ui| {
+                                        if ui.button(get_string("ficherp.review_message.create")).clicked() {
+                                            let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+                                            let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
+                                            let account = auth_lock.clone().account.unwrap();
+                                            self.review_message = Option::from(ReviewMessage {
+                                                discord_id: account.discord_user.id,
+                                                content: "".to_string(),
+                                                date: 0,
+                                                is_private: false,
+                                                is_comment: false,
+                                                set_state: FicheState::Waiting,
+                                            });
+                                            self.is_writing_message = true;
+                                        }
+                                    });
+                                }
 
                                 ui.add_space(10.0);
 
@@ -192,6 +220,7 @@ impl eframe::App for FicheSpace {
                                                 comment_bubble(ui, &review_message, self.common_mark_cache.clone())
                                             });
                                         });
+                                        ui.add_space(15.0);
                                     }
                                 });
                             });
