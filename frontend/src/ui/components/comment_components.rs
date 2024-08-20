@@ -32,7 +32,7 @@ pub fn edit_comment_window(ui: &mut egui::Ui, ficherp_id: String, review_message
                     });
                 } else {
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        egui::ComboBox::from_label("Statue de la fiche").selected_text(review_message.set_state.get_text()).show_ui(ui, |ui| {
+                        egui::ComboBox::from_label("Statut de la fiche").selected_text(review_message.set_state.get_text()).show_ui(ui, |ui| {
                             let state_iter: FicheStateIter = FicheState::iter();
 
                             if *role_lock == DiscordRole::Admin || *role_lock == DiscordRole::PlatformAdmin {
@@ -41,6 +41,8 @@ pub fn edit_comment_window(ui: &mut egui::Ui, ficherp_id: String, review_message
                                 });
                             } else if *role_lock == DiscordRole::Scenarist {
                                 ui.selectable_value(&mut review_message.set_state, FicheState::StaffValidated, FicheState::StaffValidated.get_text());
+                                ui.selectable_value(&mut review_message.set_state, FicheState::Refused, FicheState::Refused.get_text());
+
                             } else if *role_lock == DiscordRole::LeadScenarist {
                                 state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
                                     ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());

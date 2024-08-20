@@ -122,7 +122,9 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
     });
 }
 
-pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mut bool, job_text_buffer: &mut String, is_editing_existing_fiche: &mut bool) {
+pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mut bool, job_text_buffer: &mut String, is_editing_existing_fiche: &mut bool, background_image: &mut Option<String>) -> bool {
+    let mut can_be_closed: bool = false;
+
     let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
     let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
     let account = auth_lock.clone().account.unwrap();
@@ -283,6 +285,8 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                     });
 
                     post_ficherp_modif(ficherp);
+                    *background_image = Option::from(image_resolver("checkmark_expo.svg"));
+                    can_be_closed = true;
                 }
             } else {
                 if ui.button(get_string("ficherp.create.submit")).clicked() {
@@ -301,10 +305,13 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                     });
 
                     post_ficherp(ficherp);
+                    *background_image = Option::from(image_resolver("checkmark_expo.svg"));
+                    can_be_closed = true;
                 }
             }
         });
     });
+    can_be_closed
 }
 
 pub fn ficherp_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {

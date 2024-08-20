@@ -101,6 +101,7 @@ impl App {
                 is_writing_message: false,
                 is_viewing_fiche_history: false,
                 is_editing_existing_fiche: false,
+                background_image: None,
             },
 
             space_panel: SpacePanel::new(),

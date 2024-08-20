@@ -169,9 +169,10 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
             auth_cookie.set_max_age(Duration::weeks(4));
 
             let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
+            println!("{}", oauth2_info.redirect_url_egui.to_string());
 
-            actix_web::HttpResponse::Ok()
-                .append_header((header::LOCATION, "/"))
+            actix_web::HttpResponse::Found()
+                .append_header((header::LOCATION, oauth2_info.redirect_url_egui.to_string()))
                 .cookie(auth_cookie)
                 .finish()
         }

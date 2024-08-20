@@ -121,7 +121,6 @@ pub async fn submit_comment(front_query: web::Query<FrontQuery>, mut comment: we
         let accounts: Collection<FrontAccount> = app_data.dbclient.database("visualis-website").collection("account");
 
         let query = doc! {
-            "auth_id" : &front_query.auth_id,
             "fiches.id": &front_query.fiche_id
         };
         let update = if comment.set_state == FicheState::Comment {

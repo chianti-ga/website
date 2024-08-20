@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 use eframe::egui;
 use eframe::emath::Align;
 use eframe::epaint::{Margin, Rounding};
-use egui::{hex_color, CursorIcon, Layout, Sense, Stroke, Widget};
+use egui::{hex_color, CursorIcon, Image, Layout, Sense, Stroke, Widget};
 use egui_commonmark::CommonMarkCache;
 
 use shared::discord::User;
@@ -11,7 +11,7 @@ use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, ReviewMessage};
 use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 
-use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo, get_string};
+use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo, get_string, image_resolver};
 use crate::ui::components::comment_components::{comment_bubble, edit_comment_window};
 use crate::ui::components::fiche_components::{ficherp_bubble, ficherp_edit, ficherp_history_viewer_window, ficherp_viewer, ficherp_viewer_window};
 
@@ -28,6 +28,8 @@ pub struct FicheSpace {
     pub is_writing_message: bool,
     pub is_viewing_fiche_history: bool,
     pub is_editing_existing_fiche: bool,
+
+    pub background_image: Option<String>
 }
 
 //FIND A WAY TO UPDATE CURRENT FICHERP VIEW
@@ -88,6 +90,8 @@ impl eframe::App for FicheSpace {
                     if let Some(review_message) = &mut self.review_message {
                         if edit_comment_window(ui, self.selected_fiche_account.clone().unwrap().1.id, review_message, self.common_mark_cache.clone(), &mut self.selected_fiche_account) {
                             self.review_message = None;
+                            self.is_viewing_fiche_history = false;
+                            self.is_previewing_fiche = false;
                         }
                     }
                 });
@@ -143,6 +147,10 @@ impl eframe::App for FicheSpace {
                                             version: vec![],
                                             state: FicheState::Waiting,
                                         });
+
+                                        self.is_viewing_fiche_history = false;
+                                        self.is_writing_message = false;
+                                        self.is_previewing_fiche = false;
                                     }
                                 });
 
@@ -161,6 +169,12 @@ impl eframe::App for FicheSpace {
                                                 if response.on_hover_cursor(CursorIcon::PointingHand).clicked() {
                                                     self.new_fiche = None;
                                                     self.selected_fiche_account = Some((account_ref.clone(), ficherp_ref.clone()));
+                                                    self.selected_fiche_version = None;
+
+                                                    self.is_viewing_fiche_history = false;
+                                                    self.is_writing_message = false;
+                                                    self.is_previewing_fiche = false;
+
                                                 };
                                             });
                                         }
@@ -178,12 +192,19 @@ impl eframe::App for FicheSpace {
                                 frame.show(ui, |ui| {
                                     ficherp_viewer(ui, &ficherp, &account.discord_user, self.common_mark_cache.clone(), &mut self.is_viewing_fiche_history, &mut self.is_editing_existing_fiche, &mut self.new_fiche, &mut self.selected_fiche_account);
                                 });
-                            }
-
-                            if let Some(ficherp) = &mut self.new_fiche {
+                            } else if let Some(ficherp) = &mut self.new_fiche {
                                 frame.show(ui, |ui| {
-                                    ficherp_edit(ui, ficherp, &mut self.is_previewing_fiche, &mut self.job_text_buffer, &mut self.is_editing_existing_fiche)
+                                    if ficherp_edit(ui, ficherp, &mut self.is_previewing_fiche, &mut self.job_text_buffer, &mut self.is_editing_existing_fiche, &mut self.background_image) {
+                                        self.is_viewing_fiche_history = false;
+                                        self.is_writing_message = false;
+                                        self.is_previewing_fiche = false;
+
+                                        //TODO CLOSE
+                                        //self.new_fiche=None;
+                                    }
                                 });
+                            } else if let Some(bg_image) = self.background_image.clone() {
+                                ui.image(image_resolver(&*bg_image));
                             }
                         });
                     });
