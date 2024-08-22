@@ -50,7 +50,7 @@ pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Resp
     }).response
 }
 
-pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>, is_viewing: &mut bool, mut is_editing_existing_fiche: &mut bool, new_fiche: &mut Option<FicheRP>, selected_fiche_account: &mut Option<(FrontAccount, FicheRP)>) {
+pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, job_text_buffer: &mut String, user: &User, cache: Arc<RwLock<CommonMarkCache>>, is_viewing: &mut bool, mut is_editing_existing_fiche: &mut bool, new_fiche: &mut Option<FicheRP>, selected_fiche_account: &mut Option<(FrontAccount, FicheRP)>) {
     let avatar_url = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, user.avatar);
 
     let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
@@ -113,6 +113,11 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: 
             if ficherp.state == FicheState::RequestModification {
                 if ui.button(get_string("ficherp.modif.invite")).clicked() {
                     *new_fiche = Option::from(selected_fiche_account.clone().unwrap().1);
+                    //Set Job::Other inner string to the job buffer for editing
+                    if let Some(job_string) = ficherp.job.get_other_string() {
+                        *job_text_buffer = job_string.clone();
+                    }
+
                     *selected_fiche_account = None;
                     *is_editing_existing_fiche = true;
                 }

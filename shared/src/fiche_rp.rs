@@ -102,6 +102,13 @@ impl Job {
             _ => None
         }
     }
+
+    pub fn get_other_string(&self) -> Option<&String> {
+        match self {
+            Job::Other(string) => Option::from(string),
+            _ => None
+        }
+    }
 }
 impl Display for Job {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

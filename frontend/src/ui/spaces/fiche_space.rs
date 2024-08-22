@@ -190,7 +190,7 @@ impl eframe::App for FicheSpace {
                         ui.vertical_centered(|ui| {
                             if let Some((account, ficherp)) = self.selected_fiche_account.clone() {
                                 frame.show(ui, |ui| {
-                                    ficherp_viewer(ui, &ficherp, &account.discord_user, self.common_mark_cache.clone(), &mut self.is_viewing_fiche_history, &mut self.is_editing_existing_fiche, &mut self.new_fiche, &mut self.selected_fiche_account);
+                                    ficherp_viewer(ui, &ficherp, &mut self.job_text_buffer, &account.discord_user, self.common_mark_cache.clone(), &mut self.is_viewing_fiche_history, &mut self.is_editing_existing_fiche, &mut self.new_fiche, &mut self.selected_fiche_account);
                                 });
                             } else if let Some(ficherp) = &mut self.new_fiche {
                                 frame.show(ui, |ui| {
