@@ -14,8 +14,8 @@ impl SpacePanel {
 impl eframe::App for SpacePanel {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.columns(4, |mut columns| {
-                columns[0].with_layout(Layout::top_down(Align::Center), |ui| {
+            ui.columns(5, |mut columns| {
+                /*columns[0].with_layout(Layout::top_down(Align::Center), |ui| {
                     let image: Image = Image::new(image_resolver("admin_expo.svg"))
                         .fit_to_original_size(1.0)
                         .max_width(ui.available_width() - 20.0)
@@ -55,8 +55,8 @@ impl eframe::App for SpacePanel {
 
                         ui.add(security_space_btn);
                     });
-                });
-                columns[3].with_layout(Layout::top_down(Align::Center), |ui| {
+                });*/
+                columns[2].with_layout(Layout::top_down(Align::Center), |ui| {
                     let image: Image = Image::new(image_resolver("ficherp_gestion_expo.svg"))
                         .fit_to_original_size(1.0)
                         .max_width(ui.available_width() - 20.0)
