@@ -1,4 +1,4 @@
-FROM rust:latest as build
+FROM rust:1.80.1-slim-bookworm as build
 
 WORKDIR /srv
 
@@ -12,37 +12,38 @@ RUN cargo new --bin backend
 RUN cargo new --bin frontend
 RUN cargo new --bin shared
 
+# copy manifests for caching
+COPY Cargo.toml ./Cargo.toml
+COPY backend/Cargo.toml ./backend/Cargo.toml
+COPY frontend/Cargo.toml ./frontend/Cargo.toml
+COPY frontend/index.html ./frontend/index.html
+COPY frontend/assets ./frontend/assets
+COPY shared/Cargo.toml ./shared/Cargo.toml
 
-
-# copy over your manifests
-COPY Cargo.toml /srv/Cargo.toml
-
-COPY backend/Cargo.toml /srv/backend/Cargo.toml
-
-COPY frontend/Cargo.toml /srv/frontend/Cargo.toml
-COPY frontend/index.html /srv/frontend/index.html
-
-COPY shared/Cargo.toml /srv/shared/Cargo.toml
-
-# this build step will cache your dependencies
-RUN cargo build --release --package=frontend
+# build steps will cache your dependencies
+RUN cargo build --release --package=backend
 RUN trunk build --release frontend/index.html
 
-RUN rm -r /srv/backend/src /srv/frontend/src /srv/shared/src
+# Remove sample file from cargo new
+RUN rm -r ./backend/ ./frontend/ ./shared/
 
-COPY . .
+# Copy actual code and ressources
+COPY Cargo.toml ./Cargo.toml
+COPY backend/ ./backend
+COPY frontend/ ./frontend
+COPY shared/ ./shared
 
-RUN cargo build --release --package=frontend
-RUN trunk build frontend/index.html
+RUN cargo build --release --package=backend
+RUN trunk build --release frontend/index.html
 
-COPY
+#FINAL
+FROM gcr.io/distroless/cc-debian12
 
-
-# our final base
-FROM rust:slim-bookworm
+WORKDIR /srv
 
 # copy the build artifact from the build stage
-COPY --from=build /srv/out_release .
+COPY --from=build /srv/target/release/backend /srv/
+COPY --from=build /srv/frontend/dist /srv/dist
+COPY config_exemple.json /srv/data/config.json
 
-# set the startup command to run your binary
 CMD ["./backend"]
