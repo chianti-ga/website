@@ -44,6 +44,19 @@ impl DiscordRole {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn get_color(&self) -> &str {
+        match self {
+            DiscordRole::Admin => "#C4C9CE",
+            DiscordRole::Moderator => "#B8B8B8",
+            DiscordRole::LeadScenarist => "#046636",
+            DiscordRole::Scenarist => "#1F8B4C",
+            DiscordRole::User => "#B8B8B8",
+            DiscordRole::PlatformAdmin => "#AD1457",
+            _ => "unknown role"
+        }
+    }
+
     pub fn from_role_ids(role_ids: &Vec<String>) -> Option<Vec<Self>> {
         Some(role_ids.into_iter()
                      .filter_map(|id| DiscordRole::from_role_id(&id))

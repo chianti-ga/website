@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use eframe::emath::Align;
-use egui::{Button, FontSelection, Image, Layout, OpenUrl, Response, RichText, TextBuffer, TextFormat, TextStyle};
+use egui::{hex_color, Button, Color32, FontSelection, Image, Layout, OpenUrl, Response, RichText, TextBuffer, TextFormat, TextStyle};
 use egui::scroll_area::ScrollBarVisibility;
 use egui::text::LayoutJob;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
@@ -27,12 +27,11 @@ pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Resp
 
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
     ui.vertical(|ui| {
+        ui.vertical_centered(|ui| {
+            ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
+        });
         ui.horizontal(|ui| {
             ui.add(avatar_image);
-            ui.add_space(ui.min_rect().min.x);
-
-            ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
-            ui.add_space(ui.min_rect().min.x);
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 state_badge(ui, &ficherp.state);
@@ -174,13 +173,16 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             ui.label(RichText::new("Job : ").text_style(TextStyle::Name("heading3".into())));
             let mut job_string: String = ficherp.job.to_string();
             let mut words: SplitWhitespace = job_string.split_whitespace();
-            egui::ComboBox::from_label("").selected_text(words.next().unwrap()).show_ui(ui, |ui| {
-                ui.selectable_value(&mut ficherp.job, Job::ClassD, Job::ClassD.to_string());
-                ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
-                ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Science");
-                ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Doctor(MedicRank::Beginner)), "Médecine");
-                ui.selectable_value(&mut ficherp.job, Job::Chaos, Job::Chaos.to_string());
-                ui.selectable_value(&mut ficherp.job, Job::Other("".to_string()), "Autres");
+
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                egui::ComboBox::from_label("").selected_text(words.next().unwrap()).show_ui(ui, |ui| {
+                    ui.selectable_value(&mut ficherp.job, Job::ClassD, Job::ClassD.to_string());
+                    ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
+                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Science");
+                    ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Doctor(MedicRank::Beginner)), "Médecine");
+                    ui.selectable_value(&mut ficherp.job, Job::Chaos, Job::Chaos.to_string());
+                    ui.selectable_value(&mut ficherp.job, Job::Other("".to_string()), "Autres");
+                });
             });
 
             if ficherp.job.to_string().contains("Sécurité") {

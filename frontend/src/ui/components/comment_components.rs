@@ -2,7 +2,9 @@ use std::sync::{Arc, RwLock, RwLockWriteGuard, TryLockResult};
 
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use eframe::emath::Align;
-use egui::{Image, Layout, Response, RichText, TextStyle};
+use egui::{hex_color, Color32, Image, Layout, Response, RichText, TextFormat, TextStyle};
+use egui::ecolor::color_hex::color_from_hex;
+use egui::text::LayoutJob;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use log::warn;
 use strum::IntoEnumIterator;
@@ -119,12 +121,29 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
     };
 
     ui.vertical(|ui| {
+        ui.vertical_centered(|ui| {
+            let mut job = LayoutJob::default();
+            job.append(
+                &*format!("[{}] ", user_role.to_string()),
+                0.0,
+                TextFormat {
+                    color: Color32::from_hex(user_role.get_color()).unwrap_or(Color32::WHITE),
+                    ..Default::default()
+                },
+            );
+            job.append(
+                &*format!("{}", user.username),
+                0.0,
+                TextFormat::default(),
+            );
+
+            ui.label(job);
+        });
         ui.horizontal(|ui| {
             ui.add(avatar_image);
 
             ui.add_space(ui.min_rect().min.x * 0.065);
 
-            ui.label(format!("[{}] {} ", user_role.to_string(), user.username));
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 state_badge(ui, &review_message.set_state);
@@ -132,7 +151,7 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
         });
         ui.separator();
 
-        ui.label(RichText::new(user_role.role_summary()).strong());
+        ui.label(RichText::new(user_role.role_summary()).strong().color(Color32::from_hex(user_role.get_color()).unwrap_or(Color32::WHITE)));
 
         ui.separator();
 
