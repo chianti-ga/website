@@ -2,7 +2,6 @@ use std::fmt::{Display, Formatter};
 
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
-use crate::user::FrontAccount;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct FicheRP {
@@ -68,7 +67,7 @@ pub enum Job {
     Medic(MedicRole),
     SiteDirector,
     Chaos,
-    Other(String)
+    Other(String),
 }
 impl Job {
     pub fn get_science_role(&self) -> Option<&ScienceRole> {
@@ -92,6 +91,13 @@ impl Job {
     pub fn get_security_level(&self) -> Option<&SecurityRank> {
         match self {
             Job::Security(role) => Option::from(role.get_security_level()),
+            _ => None
+        }
+    }
+
+    pub fn get_medic_role(&self) -> Option<&MedicRole> {
+        match self {
+            Job::Medic(role) => Option::from(role),
             _ => None
         }
     }
@@ -137,7 +143,7 @@ impl ScienceRole {
             ScienceRole::Researcher(level) => level,
             ScienceRole::Doctor(level) => level,
             ScienceRole::Supervisor(level) => level
-        }
+        };
     }
 }
 impl Display for ScienceRole {
@@ -179,7 +185,7 @@ impl SecurityRole {
             SecurityRole::SecurityOfficier(level) => level,
             SecurityRole::TacticalAgent(level) => level,
             SecurityRole::Gunsmith(level) => level,
-        }
+        };
     }
 }
 impl Display for SecurityRole {
@@ -244,9 +250,9 @@ pub enum MedicRole {
     Director,
     DirectorAdj,
     Manager,
-    Doctor(MedicRank),
     Psychiatrist(MedicRank),
     Surgeon(MedicRank),
+    Doctor(MedicRank),
     Nurse,
 }
 
@@ -263,7 +269,7 @@ impl Display for MedicRole {
         }
     }
 }
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug, EnumIter)]
 pub enum MedicRank {
     Beginner,
     Confirmed,

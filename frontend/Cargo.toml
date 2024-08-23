@@ -7,7 +7,7 @@ edition = "2021"
 egui = { version = "0.28.1", features = ["default", "color-hex"] }
 eframe = { version = "0.28.1", features = ["default"] }
 # For image support:
-egui_extras = { version = "0.28.1", features = ["default", "image", "chrono", "all_loaders", "gif", ] }
+egui_extras = { version = "0.28.1", features = ["default", "image", "chrono", "all_loaders", "gif", "syntect"] }
 image = { version = "0.25.1", features = ["default"] }
 env_logger = "0.11.3"
 lazy_static = "1.4.0"

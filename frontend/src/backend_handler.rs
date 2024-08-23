@@ -3,14 +3,14 @@ use std::sync::{Arc, LockResult, RwLock};
 
 use ehttp::{Headers, Mode, Request};
 use lazy_static::lazy_static;
-use log::info;
+use log::{debug, info};
 
+use crate::app::{AuthInfo, ALL_ACCOUNTS, AUTH_INFO};
+use crate::ui::spaces::fiche_space::FicheSpace;
+use crate::App;
 use shared::fiche_rp::{FicheRP, ReviewMessage};
 use shared::user::FrontAccount;
 use shared::website_meta::WebsiteMeta;
-use crate::App;
-use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo};
-use crate::ui::spaces::fiche_space::FicheSpace;
 
 pub const IS_DEBUG: bool = cfg!(debug_assertions);
 
@@ -49,7 +49,7 @@ pub fn retrieve_accounts() {
 
     ehttp::fetch(request, |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
-        info!("{}", &result.text().unwrap());
+        debug!("{}", &result.text().unwrap());
         if result.status == 200 {
             let accounts: Vec<FrontAccount> = result.clone().json().unwrap();
             match ALL_ACCOUNTS.clone().write() {
@@ -69,7 +69,7 @@ pub fn retrieve_whitelist() {
 
     ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
-        info!("{}", &result.text().unwrap());
+        debug!("{}", &result.text().unwrap());
         if result.status == 200 {
             let whitelist: WebsiteMeta = result.clone().json().unwrap();
             match AUTH_INFO.clone().write() {
@@ -89,7 +89,7 @@ pub fn post_ficherp(ficherp: &FicheRP) {
 
     ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
-        info!("{}", &result.text().unwrap());
+        debug!("{}", &result.text().unwrap());
 
         if result.status == 200 {
             authenticate();
@@ -104,7 +104,7 @@ pub fn post_ficherp_modif(ficherp: &FicheRP) {
 
     ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
-        info!("{}", &result.text().unwrap());
+        debug!("{}", &result.text().unwrap());
 
         if result.status == 200 {
             authenticate();

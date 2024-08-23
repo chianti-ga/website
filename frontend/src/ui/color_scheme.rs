@@ -1,4 +1,4 @@
-use egui::{Color32, hex_color};
+use egui::{hex_color, Color32};
 use lazy_static::lazy_static;
 
 lazy_static!(

@@ -1,21 +1,21 @@
 use std::future::IntoFuture;
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, TryLockResult};
 
+use crate::backend_handler::{authenticate, get_oath2_url};
+use crate::ui::select_space::SpacePanel;
+use crate::ui::spaces::fiche_space::FicheSpace;
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
-use egui::{Align, Button, Color32, FontId, hex_color, Image, Layout, RichText};
-use egui::FontFamily::Proportional;
 use egui::style::ScrollStyle;
+use egui::FontFamily::Proportional;
+use egui::{hex_color, Align, Button, Color32, FontId, Image, Layout, RichText};
 use egui_commonmark::CommonMarkCache;
-use json_gettext::{get_text, JSONGetText, static_json_gettext_build};
+use json_gettext::{get_text, static_json_gettext_build, JSONGetText};
 use lazy_static::lazy_static;
 use log::{error, warn};
 use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 use shared::website_meta::WebsiteMeta;
-use crate::backend_handler::{authenticate, get_oath2_url};
-use crate::ui::select_space::SpacePanel;
-use crate::ui::spaces::fiche_space::FicheSpace;
 
 pub struct App {
     pub location_url: String,
@@ -28,7 +28,7 @@ pub struct App {
 pub struct AuthInfo {
     pub authenticated: bool,
     pub account: Option<FrontAccount>,
-    pub website_meta: WebsiteMeta
+    pub website_meta: WebsiteMeta,
 }
 impl Default for AuthInfo {
     fn default() -> Self {
@@ -179,13 +179,11 @@ impl eframe::App for App {
                                                     }
                                                 }
                                             });
-                                        },
+                                        }
                                         Err(err) => {
                                             warn!("Waiting for lock : \n {}", err.to_string());
                                         }
                                     }
-
-
                                 });
                             }
                             Err(err) => {

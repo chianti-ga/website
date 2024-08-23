@@ -2,7 +2,7 @@ use eframe::egui;
 use eframe::egui::{Align, Image, Layout};
 use egui::Button;
 
-use crate::app::{image_resolver, SELECTED_SPACE, Space};
+use crate::app::{image_resolver, Space, SELECTED_SPACE};
 
 pub struct SpacePanel {}
 impl SpacePanel {

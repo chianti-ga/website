@@ -1,6 +1,4 @@
 use std::fmt;
-use egui::Vec2;
-use shared::permissions::DiscordRole;
 
 pub struct NotificationWindow {
     expire_time: f64,
@@ -12,7 +10,7 @@ pub enum NotifType {
     INFO(String),
     WARN(String),
     ERROR(String),
-    OK(String)
+    OK(String),
 }
 
 impl fmt::Display for NotifType {

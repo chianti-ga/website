@@ -7,7 +7,7 @@ pub enum DiscordRole {
     Moderator,
     LeadScenarist,
     Scenarist,
-    User
+    User,
 }
 
 impl DiscordRole {

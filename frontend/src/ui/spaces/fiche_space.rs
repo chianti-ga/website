@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 use eframe::egui;
 use eframe::emath::Align;
 use eframe::epaint::{Margin, Rounding};
-use egui::{hex_color, CursorIcon, Image, Layout, Sense, Stroke, Widget};
+use egui::{hex_color, CursorIcon, Layout, Sense, Stroke, Widget};
 use egui_commonmark::CommonMarkCache;
 
 use shared::discord::User;
@@ -11,17 +11,20 @@ use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, ReviewMessage};
 use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 
-use crate::app::{ALL_ACCOUNTS, AUTH_INFO, AuthInfo, get_string, image_resolver};
+use crate::app::{get_string, image_resolver, AuthInfo, ALL_ACCOUNTS, AUTH_INFO};
 use crate::ui::components::comment_components::{comment_bubble, edit_comment_window};
 use crate::ui::components::fiche_components::{ficherp_bubble, ficherp_edit, ficherp_history_viewer_window, ficherp_viewer, ficherp_viewer_window};
 
 pub struct FicheSpace {
     pub selected_role: DiscordRole,
+
     pub common_mark_cache: Arc<RwLock<CommonMarkCache>>,
+
     pub selected_fiche_account: Option<(FrontAccount, FicheRP)>,
     pub selected_fiche_version: Option<FicheVersion>,
     pub new_fiche: Option<FicheRP>,
     pub review_message: Option<ReviewMessage>,
+
     pub job_text_buffer: String,
 
     pub is_previewing_fiche: bool,
@@ -29,7 +32,7 @@ pub struct FicheSpace {
     pub is_viewing_fiche_history: bool,
     pub is_editing_existing_fiche: bool,
 
-    pub background_image: Option<String>
+    pub background_image: Option<String>,
 }
 
 //FIND A WAY TO UPDATE CURRENT FICHERP VIEW
@@ -174,7 +177,6 @@ impl eframe::App for FicheSpace {
                                                     self.is_viewing_fiche_history = false;
                                                     self.is_writing_message = false;
                                                     self.is_previewing_fiche = false;
-
                                                 };
                                             });
                                         }
@@ -210,43 +212,43 @@ impl eframe::App for FicheSpace {
                     });
                 });
                 columns[2].with_layout(Layout::top_down(Align::Center), |ui| {
-                        let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
-                        if let Ok(all_account) = binding.read() {
-                            ui.vertical(|ui| {
-                                if self.selected_fiche_account.is_some() {
-                                    ui.horizontal(|ui| {
-                                        if ui.button(get_string("ficherp.review_message.create")).clicked() {
-                                            let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
-                                            let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
-                                            let account = auth_lock.clone().account.unwrap();
-                                            self.review_message = Option::from(ReviewMessage {
-                                                discord_id: account.discord_user.id,
-                                                content: "".to_string(),
-                                                date: 0,
-                                                is_private: false,
-                                                is_comment: false,
-                                                set_state: FicheState::Waiting,
-                                            });
-                                            self.is_writing_message = true;
-                                        }
-                                    });
-                                }
-
-                                ui.add_space(10.0);
-
-                                egui::ScrollArea::vertical().show(ui, |ui| {
-                                    if self.selected_fiche_account.is_some() {
-                                        self.selected_fiche_account.clone().unwrap().1.messages.iter().for_each(|review_message: &ReviewMessage| {
-                                            frame.show(ui, |ui| {
-                                                comment_bubble(ui, &review_message, self.common_mark_cache.clone())
-                                            });
+                    let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
+                    if let Ok(all_account) = binding.read() {
+                        ui.vertical(|ui| {
+                            if self.selected_fiche_account.is_some() {
+                                ui.horizontal(|ui| {
+                                    if ui.button(get_string("ficherp.review_message.create")).clicked() {
+                                        let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+                                        let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
+                                        let account = auth_lock.clone().account.unwrap();
+                                        self.review_message = Option::from(ReviewMessage {
+                                            discord_id: account.discord_user.id,
+                                            content: "".to_string(),
+                                            date: 0,
+                                            is_private: false,
+                                            is_comment: false,
+                                            set_state: FicheState::Waiting,
                                         });
-                                        ui.add_space(15.0);
+                                        self.is_writing_message = true;
                                     }
                                 });
+                            }
+
+                            ui.add_space(10.0);
+
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                if self.selected_fiche_account.is_some() {
+                                    self.selected_fiche_account.clone().unwrap().1.messages.iter().for_each(|review_message: &ReviewMessage| {
+                                        frame.show(ui, |ui| {
+                                            comment_bubble(ui, &review_message, self.common_mark_cache.clone())
+                                        });
+                                    });
+                                    ui.add_space(15.0);
+                                }
                             });
-                        };
-                    });
+                        });
+                    };
+                });
             });
         });
     }

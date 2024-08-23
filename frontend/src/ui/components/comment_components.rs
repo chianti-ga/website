@@ -2,9 +2,9 @@ use std::sync::{Arc, RwLock, RwLockWriteGuard, TryLockResult};
 
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use eframe::emath::Align;
-use egui::{hex_color, Color32, Image, Layout, Response, RichText, TextFormat, TextStyle};
 use egui::ecolor::color_hex::color_from_hex;
 use egui::text::LayoutJob;
+use egui::{hex_color, Color32, Image, Layout, Response, RichText, TextFormat, TextStyle};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use log::warn;
 use strum::IntoEnumIterator;
@@ -24,65 +24,64 @@ pub fn edit_comment_window(ui: &mut egui::Ui, ficherp_id: String, review_message
     ui.vertical(|ui| {
         match SELECTED_ROLE.try_read() {
             Ok(role_lock) => {
-        ui.horizontal(|ui| {
-            if *role_lock != DiscordRole::User {
-                ui.checkbox(&mut review_message.is_comment, "Commentaire ?");
-                if review_message.is_comment {
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.checkbox(&mut review_message.is_private, "Commentaire privé ?");
+                ui.horizontal(|ui| {
+                    if *role_lock != DiscordRole::User {
+                        ui.checkbox(&mut review_message.is_comment, "Commentaire ?");
+                        if review_message.is_comment {
+                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                ui.checkbox(&mut review_message.is_private, "Commentaire privé ?");
+                                review_message.set_state = FicheState::Comment;
+                            });
+                        } else {
+                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                egui::ComboBox::from_label("Statut de la fiche").selected_text(review_message.set_state.get_text()).show_ui(ui, |ui| {
+                                    let state_iter: FicheStateIter = FicheState::iter();
+
+                                    if *role_lock == DiscordRole::Admin || *role_lock == DiscordRole::PlatformAdmin {
+                                        state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
+                                            ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
+                                        });
+                                    } else if *role_lock == DiscordRole::Scenarist {
+                                        ui.selectable_value(&mut review_message.set_state, FicheState::StaffValidated, FicheState::StaffValidated.get_text());
+                                        ui.selectable_value(&mut review_message.set_state, FicheState::Refused, FicheState::Refused.get_text());
+                                    } else if *role_lock == DiscordRole::LeadScenarist {
+                                        state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
+                                            ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
+                                        });
+                                    }
+                                });
+                            });
+                        }
+                    } else {
                         review_message.set_state = FicheState::Comment;
-                    });
-                } else {
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        egui::ComboBox::from_label("Statut de la fiche").selected_text(review_message.set_state.get_text()).show_ui(ui, |ui| {
-                            let state_iter: FicheStateIter = FicheState::iter();
+                    }
+                });
 
-                            if *role_lock == DiscordRole::Admin || *role_lock == DiscordRole::PlatformAdmin {
-                                state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
-                                    ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
-                                });
-                            } else if *role_lock == DiscordRole::Scenarist {
-                                ui.selectable_value(&mut review_message.set_state, FicheState::StaffValidated, FicheState::StaffValidated.get_text());
-                                ui.selectable_value(&mut review_message.set_state, FicheState::Refused, FicheState::Refused.get_text());
+                ui.label(RichText::new("Commentaire : ").text_style(TextStyle::Name("heading3".into())).strong());
 
-                            } else if *role_lock == DiscordRole::LeadScenarist {
-                                state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
-                                    ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
-                                });
-                            }
-                        });
-                    });
-                }
-            } else {
-                review_message.set_state = FicheState::Comment;
-            }
-        });
+                let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
 
-        ui.label(RichText::new("Commentaire : ").text_style(TextStyle::Name("heading3".into())).strong());
+                egui::ScrollArea::vertical().id_source("scoll_comment_viewer").show(ui, |ui| {
+                    let mut size = ui.available_size();
+                    size.y = size.y / 3.0;
+                    size.x *= 0.99;
 
-        let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
+                    ui.add_sized(size, egui::TextEdit::multiline(&mut review_message.content));
 
-        egui::ScrollArea::vertical().id_source("scoll_comment_viewer").show(ui, |ui| {
-            let mut size = ui.available_size();
-            size.y = size.y / 3.0;
-            size.x *= 0.99;
+                    ui.label(RichText::new("Preview : ").text_style(TextStyle::Name("heading3".into())).strong());
 
-            ui.add_sized(size, egui::TextEdit::multiline(&mut review_message.content));
+                    CommonMarkViewer::new("comment_viewer").show(ui, &mut cache, &review_message.content);
+                });
 
-            ui.label(RichText::new("Preview : ").text_style(TextStyle::Name("heading3".into())).strong());
+                ui.vertical_centered(|ui| {
+                    if ui.button("Poster le commentaire/réponse").clicked() {
+                        review_message.date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                        post_comment(review_message, ficherp_id);
 
-            CommonMarkViewer::new("comment_viewer").show(ui, &mut cache, &review_message.content);
-        });
-
-        ui.vertical_centered(|ui| {
-            if ui.button("Poster le commentaire/réponse").clicked() {
-                review_message.date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-                post_comment(review_message, ficherp_id);
-
-                *selected_fiche_account = None; // Close current view
-                close = true;
-            }
-        });
+                        *selected_fiche_account = None; // Close current view
+                        close = true;
+                    }
+                });
             }
             Err(err) => {
                 warn!("Can't get a read lock : \n {}", err)
@@ -143,7 +142,6 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
             ui.add(avatar_image);
 
             ui.add_space(ui.min_rect().min.x * 0.065);
-
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 state_badge(ui, &review_message.set_state);

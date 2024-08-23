@@ -4,9 +4,9 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use chrono::{NaiveDateTime, TimeZone, Utc};
 use eframe::emath::Align;
-use egui::{hex_color, Button, Color32, FontSelection, Image, Layout, OpenUrl, Response, RichText, TextBuffer, TextFormat, TextStyle};
 use egui::scroll_area::ScrollBarVisibility;
 use egui::text::LayoutJob;
+use egui::{Button, Color32, FontSelection, Image, Layout, OpenUrl, Response, RichText, TextBuffer, TextEdit, TextFormat, TextStyle};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use strum::IntoEnumIterator;
 use web_time::{SystemTime, UNIX_EPOCH};
@@ -15,8 +15,8 @@ use shared::discord::User;
 use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, MedicRank, MedicRole, ScienceRank, ScienceRole, SecurityRank, SecurityRole};
 use shared::user::FrontAccount;
 
-use crate::app::{AuthInfo, get_string, image_resolver};
 use crate::app::AUTH_INFO;
+use crate::app::{get_string, image_resolver, AuthInfo};
 use crate::backend_handler::{post_ficherp, post_ficherp_modif};
 
 pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Response {
@@ -122,12 +122,12 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, job_text_buffer: &mu
                 }
             }
         });
-
     });
 }
 
 pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mut bool, job_text_buffer: &mut String, is_editing_existing_fiche: &mut bool, background_image: &mut Option<String>) -> bool {
     let mut can_be_closed: bool = false;
+    let mut valid_entries: bool = false;
 
     let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
     let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
@@ -166,7 +166,12 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
 
         ui.horizontal(|ui| {
             ui.label(RichText::new("Nom : ").text_style(TextStyle::Name("heading3".into())));
-            ui.text_edit_singleline(&mut ficherp.name);
+            let name_text_edit = TextEdit::singleline(&mut ficherp.name).char_limit(70).hint_text("François LePortier");
+            ui.add(name_text_edit);
+            if ficherp.name.chars().count() < 5 {
+                valid_entries = false;
+                ui.label(RichText::new("⚠ Trop court... (<5 caractères)").strong().color(Color32::YELLOW));
+            }
         });
 
         ui.horizontal_wrapped(|ui| {
@@ -174,28 +179,28 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             let mut job_string: String = ficherp.job.to_string();
             let mut words: SplitWhitespace = job_string.split_whitespace();
 
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                egui::ComboBox::from_label("").selected_text(words.next().unwrap()).show_ui(ui, |ui| {
-                    ui.selectable_value(&mut ficherp.job, Job::ClassD, Job::ClassD.to_string());
-                    ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
-                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Science");
-                    ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Doctor(MedicRank::Beginner)), "Médecine");
-                    ui.selectable_value(&mut ficherp.job, Job::Chaos, Job::Chaos.to_string());
-                    ui.selectable_value(&mut ficherp.job, Job::Other("".to_string()), "Autres");
-                });
+            egui::ComboBox::from_label("").selected_text(words.next().unwrap()).show_ui(ui, |ui| {
+                ui.selectable_value(&mut ficherp.job, Job::ClassD, Job::ClassD.to_string());
+                ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
+                ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Science");
+                ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Doctor(MedicRank::Beginner)), "Médecine");
+                ui.selectable_value(&mut ficherp.job, Job::Chaos, Job::Chaos.to_string());
+                ui.selectable_value(&mut ficherp.job, Job::Other("".to_string()), "Autres");
             });
 
             if ficherp.job.to_string().contains("Sécurité") {
                 let mut role_string: String = ficherp.job.get_security_role().unwrap().to_string();
                 role_string = truncate_at_char_boundary(role_string, 20);
-                egui::ComboBox::from_label("Role").selected_text(role_string).show_ui(ui, |ui| {
+                ui.label("Role");
+                egui::ComboBox::from_id_source("role_combo").selected_text(role_string).show_ui(ui, |ui| {
                     ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
                     ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::Gunsmith(SecurityRank::Rct)), "Armurier");
                 });
 
                 let mut level: String = ficherp.job.clone().get_security_level().unwrap().to_string();
                 level = truncate_at_char_boundary(level, 20);
-                egui::ComboBox::from_label("Rang").selected_text(&level).show_ui(ui, |ui| {
+                ui.label("Rang");
+                egui::ComboBox::from_id_source("rang_combo").selected_text(&level).show_ui(ui, |ui| {
                     match &ficherp.job {
                         Job::Security(role) => {
                             match role {
@@ -222,13 +227,15 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             }
 
             if ficherp.job.to_string().contains("Science") {
-                egui::ComboBox::from_label("Role").selected_text(ficherp.job.get_science_role().unwrap().to_string()).show_ui(ui, |ui| {
+                ui.label("Role");
+                egui::ComboBox::from_id_source("role_combo").selected_text(ficherp.job.get_science_role().unwrap().to_string()).show_ui(ui, |ui| {
                     ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Scientifique");
                     ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceRank::Beginner)), "Chercheur");
                     //ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceLevel::Beginner)), role.to_string());
                 });
                 let rank: String = ficherp.job.clone().get_science_level().unwrap().to_string();
-                egui::ComboBox::from_label("Rang").selected_text(&rank).show_ui(ui, |ui| {
+                ui.label("Rang");
+                egui::ComboBox::from_id_source("rank_combo").selected_text(&rank).show_ui(ui, |ui| {
                     match &ficherp.job {
                         Job::Science(role) => {
                             match role {
@@ -250,27 +257,113 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                 });
             }
 
+            if ficherp.job.to_string().contains("Médecine") {
+                let mut role_string: String = ficherp.job.get_medic_role().unwrap().to_string();
+                role_string = truncate_at_char_boundary(role_string, 20);
+                ui.label("Role");
+                egui::ComboBox::from_id_source("role_combo").selected_text(role_string).show_ui(ui, |ui| {
+                    ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Nurse), "Infirmier");
+                    ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Doctor(MedicRank::Beginner)), "Médecin");
+                    ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Surgeon(MedicRank::Beginner)), "Chirurgien");
+                    ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Psychiatrist(MedicRank::Beginner)), "Psychiatre");
+                    ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Manager), "Responsable");
+                    ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::DirectorAdj), "Directeur Adjoint");
+                    ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Director), "Directeur");
+                });
+
+                if let Some(level) = ficherp.job.clone().get_medic_level() {
+                    let mut level_string: String = level.to_string();
+                    level_string = truncate_at_char_boundary(level_string, 20);
+
+                    ui.label("Rang");
+                    egui::ComboBox::from_id_source("rank_combo").selected_text(&level_string).show_ui(ui, |ui| {
+                        match &ficherp.job {
+                            Job::Medic(role) => {
+                                match role {
+                                    MedicRole::Psychiatrist(_) => {
+                                        for level in MedicRank::iter() {
+                                            let mut level_string = level.to_string();
+                                            level_string = truncate_at_char_boundary(level_string, 20);
+                                            ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Psychiatrist(level.clone())), level_string);
+                                        }
+                                    }
+                                    MedicRole::Surgeon(_) => {
+                                        for level in MedicRank::iter() {
+                                            let mut level_string = level.to_string();
+                                            level_string = truncate_at_char_boundary(level_string, 20);
+                                            ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Surgeon(level.clone())), level_string);
+                                        }
+                                    }
+                                    MedicRole::Doctor(_) => {
+                                        for level in MedicRank::iter() {
+                                            let mut level_string = level.to_string();
+                                            level_string = truncate_at_char_boundary(level_string, 20);
+                                            ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Doctor(level.clone())), level_string);
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            _ => {}
+                        }
+                    });
+                }
+            }
+
             if ficherp.job.to_string().contains("Autres") {
-                ui.text_edit_singleline(job_text_buffer);
+                let job_text_edit = TextEdit::singleline(job_text_buffer).char_limit(70).hint_text("Technicien");
+                ui.add(job_text_edit);
+                if job_text_buffer.chars().count() < 5 {
+                    valid_entries = false;
+                    ui.label(RichText::new("⚠ Trop court... (<5 caractères)").strong().color(Color32::YELLOW));
+                }
             }
         });
 
         ui.separator();
 
-        let height = ui.available_size().y * 0.25;
+        /** SYNTAX HIGHLIGHT **/
+
+        let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
+            let mut theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(ui.ctx());
+            let mut layout_job =
+                egui_extras::syntax_highlighting::highlight(ui.ctx(), &theme, string, "markdown");
+            layout_job.wrap.max_width = wrap_width;
+            ui.fonts(|f| f.layout_job(layout_job))
+        };
+
         ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
+
+        if ficherp.description.chars().count() > 15000 {
+            valid_entries = false;
+            ui.label(RichText::new("⚠ Trop long (>15 000 caractères)").strong().color(Color32::YELLOW));
+        } else if ficherp.description.chars().count() < 200 {
+            valid_entries = false;
+            ui.label(RichText::new("⚠ Trop court... (< 200 cractères)").strong().color(Color32::YELLOW));
+        }
+
+        let height = ui.available_size().y * 0.25;
+
         egui::ScrollArea::vertical().id_source("scroll_physic").max_height(height).scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible).show(ui, |ui| {
             let size = ui.available_size();
-            ui.add_sized(size, egui::TextEdit::multiline(&mut ficherp.description));
+            ui.add_sized(size, TextEdit::multiline(&mut ficherp.description).code_editor().layouter(&mut layouter));
         });
 
         ui.label(RichText::new("Lore : ").strong().text_style(TextStyle::Name("heading3".into())));
+
+        if ficherp.lore.chars().count() > 15000 {
+            valid_entries = false;
+            ui.label(RichText::new("⚠ Trop long (>15 000 caractères)").strong().color(Color32::YELLOW));
+        } else if ficherp.lore.chars().count() < 200 {
+            valid_entries = false;
+            ui.label(RichText::new("⚠ Trop court... (< 200 cractères)").strong().color(Color32::YELLOW));
+        }
 
         let height = ui.available_size().y * 0.90;
 
         egui::ScrollArea::vertical().id_source("scroll_lore").max_height(height).scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible).show(ui, |ui| {
             let size = ui.available_size();
-            ui.add_sized(size, egui::TextEdit::multiline(&mut ficherp.lore));
+            ui.add_sized(size, egui::TextEdit::multiline(&mut ficherp.lore).code_editor().layouter(&mut layouter));
         });
         ui.add_space(10.0);
 
@@ -366,7 +459,6 @@ pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selec
         let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(selected_fiche_account_version.clone().submission_date as i64, 0));
         let selected_text = datetime.format("%d-%m-%Y").to_string();
 
-
         egui::ComboBox::from_label(label).selected_text(&selected_text).show_ui(ui, |ui| {
             ficherp.version.iter().for_each(|fiche_version: &FicheVersion| {
                 let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(fiche_version.submission_date as i64, 0));
@@ -412,7 +504,6 @@ pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selec
         });
     });
 }
-
 
 pub fn state_badge(ui: &mut egui::Ui, state: &FicheState) {
     let img_to_load: &str = match state {
