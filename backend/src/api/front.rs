@@ -59,6 +59,7 @@ pub async fn submit_ficherp(front_query: web::Query<FrontQuery>, mut ficherp: we
         };
 
         ficherp.id = Uuid::now_v7().to_string();
+        ficherp.state = FicheState::Waiting;
 
         let update = doc! {
             "$push": { "fiches": to_bson(&ficherp.into_inner()).unwrap() }
@@ -90,8 +91,7 @@ pub async fn submit_ficherp_modif(front_query: web::Query<FrontQuery>, mut fiche
         };
         let update = doc! {
             "$set": {
-                                "fiches.$.state": to_bson(&FicheState::Waiting).unwrap(),
-
+                "fiches.$.state": to_bson(&FicheState::Waiting).unwrap(),
                 "fiches.$.name": to_bson(&ficherp.name).unwrap(),
                 "fiches.$.job": to_bson(&ficherp.job).unwrap(),
                 "fiches.$.description": to_bson(&ficherp.description).unwrap(),

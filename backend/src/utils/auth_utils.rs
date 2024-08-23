@@ -95,7 +95,7 @@ pub async fn update_account_discord(auth_id: &str, client: mongodb::Client, reqw
         }
     };
     accounts.update_one(query, update_doc).await.expect("Failed to update account");
-    info!("Discord info updated for {}({})",authorization_information.user.username, authorization_information.user.id);
+    info!("Discord info updated for {}({})",authorization_information.user.global_name, authorization_information.user.id);
 }
 
 pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mongodb::Client, oauth_client: BasicClient) {

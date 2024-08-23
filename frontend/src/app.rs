@@ -161,7 +161,7 @@ impl eframe::App for App {
                                 };
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     #[cfg(debug_assertions)]
-                                    ui.label(format!("Connecté en tant que : {} ({})", account.discord_user.username, account.discord_user.id));
+                                    ui.label(format!("Connecté en tant que : {} ({})", account.discord_user.global_name, account.discord_user.id));
 
                                     #[cfg(debug_assertions)]
                                     ui.toggle_value(&mut self.is_ui_debug, "debug");

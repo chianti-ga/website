@@ -118,7 +118,7 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
                 auth_cookie.set_same_site(SameSite::Strict);
 
                 update_token(&auth_id, &authorization_information.user.id, token_response.clone(), app_data.dbclient.clone(), &app_data.reqwest_client).await;
-                info!("Token updated for {}({})",authorization_information.user.username.clone(), authorization_information.user.id.clone());
+                info!("Token updated for {}({})",authorization_information.user.global_name.clone(), authorization_information.user.id.clone());
 
                 return actix_web::HttpResponse::Ok().cookie(auth_cookie).body("");
             }

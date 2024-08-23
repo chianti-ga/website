@@ -131,7 +131,7 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
                 },
             );
             job.append(
-                &*format!("{}", user.username),
+                &*format!("{}", user.global_name),
                 0.0,
                 TextFormat::default(),
             );

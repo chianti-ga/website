@@ -28,7 +28,7 @@ pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Resp
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
-            ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
+            ui.label(format!("{} | Fiche RP de {} | {}", user.global_name, ficherp.name, formatted_date));
         });
         ui.horizontal(|ui| {
             ui.add(avatar_image);
@@ -59,7 +59,7 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, job_text_buffer: &mu
     ui.vertical(|ui| {
         ui.horizontal(|ui| {
             ui.vertical_centered(|ui| {
-                ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
+                ui.label(format!("{} | Fiche RP de {} | {}", user.global_name, ficherp.name, formatted_date));
             });
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -139,7 +139,7 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
 
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
-            ui.label(format!("{} | Composition de votre Fiche RP", &user.username));
+            ui.label(format!("{} | Composition de votre Fiche RP", &user.global_name));
         });
         ui.horizontal(|ui| {
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
@@ -420,7 +420,7 @@ pub fn ficherp_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, 
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
-            ui.label(format!("{} | Fiche RP de {} | {}", user.username, ficherp.name, formatted_date));
+            ui.label(format!("{} | Fiche RP de {} | {}", user.global_name, ficherp.name, formatted_date));
         });
 
         ui.separator();
@@ -473,7 +473,7 @@ pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selec
     let formatted_date = datetime.format("%d-%m-%Y").to_string();
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
-            ui.label(format!("{} | Fiche RP de {} | {}", user.username, selected_fiche_account_version.name, formatted_date));
+            ui.label(format!("{} | Fiche RP de {} | {}", user.global_name, selected_fiche_account_version.name, formatted_date));
         });
 
         ui.separator();
