@@ -171,6 +171,8 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             if ficherp.name.chars().count() < 5 {
                 valid_entries = false;
                 ui.label(RichText::new("⚠ Trop court... (<5 caractères)").strong().color(Color32::YELLOW));
+            } else {
+                valid_entries = true;
             }
         });
 
@@ -316,6 +318,8 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                 if job_text_buffer.chars().count() < 5 {
                     valid_entries = false;
                     ui.label(RichText::new("⚠ Trop court... (<5 caractères)").strong().color(Color32::YELLOW));
+                } else {
+                    valid_entries = true;
                 }
             }
         });
@@ -340,6 +344,8 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
         } else if ficherp.description.chars().count() < 200 {
             valid_entries = false;
             ui.label(RichText::new("⚠ Trop court... (< 200 cractères)").strong().color(Color32::YELLOW));
+        } else {
+            valid_entries = true;
         }
 
         let height = ui.available_size().y * 0.25;
@@ -357,6 +363,8 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
         } else if ficherp.lore.chars().count() < 200 {
             valid_entries = false;
             ui.label(RichText::new("⚠ Trop court... (< 200 cractères)").strong().color(Color32::YELLOW));
+        } else {
+            valid_entries = true;
         }
 
         let height = ui.available_size().y * 0.90;
@@ -389,25 +397,27 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                     can_be_closed = true;
                 }
             } else {
-                if ui.button(get_string("ficherp.create.submit")).clicked() {
-                    if ficherp.job.to_string().contains("Autres") {
-                        ficherp.job = Job::Other(job_text_buffer.clone());
+                ui.add_enabled_ui(valid_entries, |ui| {
+                    if ui.button(get_string("ficherp.create.submit")).clicked() {
+                        if ficherp.job.to_string().contains("Autres") {
+                            ficherp.job = Job::Other(job_text_buffer.clone());
+                        }
+
+                        ficherp.submission_date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+                        ficherp.version.push(FicheVersion {
+                            name: ficherp.name.clone(),
+                            job: ficherp.job.clone(),
+                            description: ficherp.description.clone(),
+                            lore: ficherp.lore.clone(),
+                            submission_date: ficherp.submission_date.clone(),
+                        });
+
+                        post_ficherp(ficherp);
+                        *background_image = Option::from(image_resolver("checkmark_expo.svg"));
+                        can_be_closed = true;
                     }
-
-                    ficherp.submission_date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-
-                    ficherp.version.push(FicheVersion {
-                        name: ficherp.name.clone(),
-                        job: ficherp.job.clone(),
-                        description: ficherp.description.clone(),
-                        lore: ficherp.lore.clone(),
-                        submission_date: ficherp.submission_date.clone(),
-                    });
-
-                    post_ficherp(ficherp);
-                    *background_image = Option::from(image_resolver("checkmark_expo.svg"));
-                    can_be_closed = true;
-                }
+                });
             }
         });
     });
