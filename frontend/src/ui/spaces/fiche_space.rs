@@ -33,6 +33,8 @@ pub struct FicheSpace {
     pub is_editing_existing_fiche: bool,
 
     pub background_image: Option<String>,
+
+    pub only_own_fiche: bool,
 }
 
 //FIND A WAY TO UPDATE CURRENT FICHERP VIEW
@@ -159,7 +161,7 @@ impl eframe::App for FicheSpace {
 
                                 ui.add_space(10.0);
 
-                                all_account.iter().filter(|account| !account.fiches.is_empty()).for_each(|account| {
+                                all_account.iter().filter(|account| !account.fiches.is_empty()).fil.for_each(|account| {
                                     ui.vertical(|ui| {
                                         for ficherp in &account.fiches {
                                             let account_ref: &FrontAccount = account;
