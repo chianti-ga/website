@@ -4,10 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-egui = { version = "0.28.1", features = ["default", "color-hex"] }
-eframe = { version = "0.28.1", features = ["default"] }
-# For image support:
-egui_extras = { version = "0.28.1", features = ["default", "image", "chrono", "all_loaders", "gif", "syntect"] }
+
+egui = { path = "../../egui/crates/egui", features = ["default", "color-hex"] }
+eframe = { path = "../../egui/crates/eframe", features = ["default"] }
+egui_extras = { path = "../../egui/crates/egui_extras", features = ["default", "image", "chrono", "all_loaders", "gif", "syntect"] }
+
+egui_commonmark = { path = "../../egui_commonmark/egui_commonmark", features = ["default", "better_syntax_highlighting", "load-images", "svg"] }
+ehttp = { version = "0.5.0", features = ["json"] }
+
 image = { version = "0.25.1", features = ["default"] }
 env_logger = "0.11.3"
 lazy_static = "1.4.0"
@@ -17,18 +21,20 @@ serde_json = "1.0.117"
 json-gettext = "4.0.10"
 shared = { version = "0.1.0", path = "../shared" }
 chrono = "0.4.38"
-egui_commonmark = { version = "0.17.0", features = ["default", "better_syntax_highlighting", "load-images", "svg"] }
-ehttp = { version = "0.5.0", features = ["json"] }
 strum = { version = "0.26.3", features = ["derive"] }
 
+[patch.crates-io]
+#USE THIS FOR NOW SINCE DEPS ARE BROKEN ON CRATEIO
+
+
 # web:
-[target.'cfg(target_arch = "wasm32")'.dependencies]
+[target.wasm32-unknown-unknown.dependencies]
 wasm-cookies = "0.2.1"
 getrandom = { version = "0.2", features = ["js"] }
 wasm-timer = "0.2.5"
 wasm-bindgen-futures = { version = "0.4.42" }
-web-sys = { version = "0.3.69", features = [] }
 web-time = { version = "1.1.0", features = ["serde"] }
+web-sys = "0.3.69"
 
 [profile.release]
 lto = true

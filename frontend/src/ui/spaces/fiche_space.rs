@@ -1,9 +1,6 @@
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
-use eframe::egui;
-use eframe::emath::Align;
-use eframe::epaint::{Margin, Rounding};
-use egui::{hex_color, CursorIcon, Layout, Sense, Stroke, Widget};
+use egui::{hex_color, Align, CursorIcon, Layout, Margin, Rounding, Sense, Stroke, Widget};
 use egui_commonmark::CommonMarkCache;
 
 use shared::discord::User;
@@ -11,13 +8,11 @@ use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, ReviewMessage};
 use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 
-use crate::app::{get_string, image_resolver, AuthInfo, ALL_ACCOUNTS, AUTH_INFO};
+use crate::app::{get_string, image_resolver, AuthInfo, ALL_ACCOUNTS, AUTH_INFO, SELECTED_ROLE};
 use crate::ui::components::comment_components::{comment_bubble, edit_comment_window};
 use crate::ui::components::fiche_components::{ficherp_bubble, ficherp_edit, ficherp_history_viewer_window, ficherp_viewer, ficherp_viewer_window};
 
 pub struct FicheSpace {
-    pub selected_role: DiscordRole,
-
     pub common_mark_cache: Arc<RwLock<CommonMarkCache>>,
 
     pub selected_fiche_account: Option<(FrontAccount, FicheRP)>,
@@ -156,12 +151,25 @@ impl eframe::App for FicheSpace {
                                         self.is_viewing_fiche_history = false;
                                         self.is_writing_message = false;
                                         self.is_previewing_fiche = false;
+                                        self.is_editing_existing_fiche = false;
                                     }
                                 });
 
                                 ui.add_space(10.0);
 
-                                all_account.iter().filter(|account| !account.fiches.is_empty()).fil.for_each(|account| {
+                                let auth_binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+                                let auth_lock: RwLockReadGuard<AuthInfo> = auth_binding.read().unwrap();
+                                let user_account: FrontAccount = auth_lock.clone().account.unwrap();
+                                let role_binding = SELECTED_ROLE.clone();
+                                let user_role: RwLockReadGuard<DiscordRole> = role_binding.read().unwrap();
+
+                                all_account.iter().filter(|account| {
+                                    if !account.fiches.is_empty() && (*user_role == DiscordRole::PlatformAdmin || *user_role == DiscordRole::Admin || *user_role == DiscordRole::LeadScenarist || *user_role == DiscordRole::Scenarist) {
+                                        true
+                                    } else {
+                                        account.discord_user == user_account.discord_user
+                                    }
+                                }).for_each(|account| {
                                     ui.vertical(|ui| {
                                         for ficherp in &account.fiches {
                                             let account_ref: &FrontAccount = account;

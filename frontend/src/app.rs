@@ -90,7 +90,6 @@ impl App {
             is_ui_debug: false,
 
             fiche_space: FicheSpace {
-                selected_role: DiscordRole::User,
                 common_mark_cache: Arc::new(RwLock::new(CommonMarkCache::default())),
                 selected_fiche_account: None,
                 selected_fiche_version: None,
@@ -102,6 +101,7 @@ impl App {
                 is_viewing_fiche_history: false,
                 is_editing_existing_fiche: false,
                 background_image: None,
+                only_own_fiche: false,
             },
 
             space_panel: SpacePanel::new(),

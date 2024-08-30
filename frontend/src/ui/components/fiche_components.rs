@@ -55,20 +55,22 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, job_text_buffer: &mu
     let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
     let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(ficherp.submission_date as i64, 0));
 
-    let formatted_date = datetime.format("%d-%m-%Y").to_string();
+    let formatted_date = datetime.format("%d-%m-%Y %H:%M:%S").to_string();
     ui.vertical(|ui| {
         ui.horizontal(|ui| {
             ui.vertical_centered(|ui| {
                 ui.label(format!("{} | Fiche RP de {} | {}", user.global_name, ficherp.name, formatted_date));
             });
-
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let history_btn = Button::image_and_text(Image::new(image_resolver("history.svg")).fit_to_original_size(1.0).shrink_to_fit().maintain_aspect_ratio(true), "Historique de la fiche");
-                if ui.add(history_btn).clicked() {
-                    *is_viewing = true;
-                }
-            });
         });
+
+        ui.vertical_centered(|ui| {
+            let history_btn = Button::image_and_text(Image::new(image_resolver("history.svg")).fit_to_original_size(1.0).shrink_to_fit().maintain_aspect_ratio(true), "Historique de la fiche");
+            if ui.add(history_btn).clicked() {
+                *is_viewing = true;
+            }
+        });
+
+
         ui.horizontal(|ui| {
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 ui.add(avatar_image);
@@ -110,15 +112,20 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, job_text_buffer: &mu
 
         ui.vertical_centered(|ui| {
             if ficherp.state == FicheState::RequestModification {
-                if ui.button(get_string("ficherp.modif.invite")).clicked() {
-                    *new_fiche = Option::from(selected_fiche_account.clone().unwrap().1);
-                    //Set Job::Other inner string to the job buffer for editing
-                    if let Some(job_string) = ficherp.job.get_other_string() {
-                        *job_text_buffer = job_string.clone();
-                    }
+                let auth_binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+                let auth_lock: RwLockReadGuard<AuthInfo> = auth_binding.read().unwrap();
+                let logged_user_account: FrontAccount = auth_lock.clone().account.unwrap();
+                if *user == logged_user_account.discord_user {
+                    if ui.button(get_string("ficherp.modif.invite")).clicked() {
+                        *new_fiche = Option::from(selected_fiche_account.clone().unwrap().1);
+                        //Set Job::Other inner string to the job buffer for editing
+                        if let Some(job_string) = ficherp.job.get_other_string() {
+                            *job_text_buffer = job_string.clone();
+                        }
 
-                    *selected_fiche_account = None;
-                    *is_editing_existing_fiche = true;
+                        *selected_fiche_account = None;
+                        *is_editing_existing_fiche = true;
+                    }
                 }
             }
         });
@@ -427,7 +434,7 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
 pub fn ficherp_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, cache: Arc<RwLock<CommonMarkCache>>) {
     let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(ficherp.submission_date as i64, 0));
 
-    let formatted_date = datetime.format("%d-%m-%Y").to_string();
+    let formatted_date = datetime.format("%d-%m-%Y %H:%M:%S").to_string();
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
             ui.label(format!("{} | Fiche RP de {} | {}", user.global_name, ficherp.name, formatted_date));

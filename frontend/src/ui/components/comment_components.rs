@@ -157,7 +157,7 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
 
         let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
 
-        egui::ScrollArea::vertical().id_source(&review_message.content).show(ui, |ui| {
+        egui::ScrollArea::vertical().id_source((&review_message.content, &review_message.date)).show(ui, |ui| {
             CommonMarkViewer::new("comment_viewer").show(ui, &mut cache, &review_message.content);
         });
         ui.separator();
