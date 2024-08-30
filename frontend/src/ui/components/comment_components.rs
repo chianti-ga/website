@@ -100,7 +100,7 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
     let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
     let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(review_message.date as i64, 0));
 
-    let formatted_date: String = datetime.format("%d-%m-%Y").to_string();
+    let formatted_date = datetime.format("%d-%m-%Y %H:%M:%S").to_string();
 
     // we privilege certain roles because a user can have several roles that match
     let user_role = if AUTH_INFO.try_read().unwrap().website_meta.whitelist.contains(&account.discord_user.id) {

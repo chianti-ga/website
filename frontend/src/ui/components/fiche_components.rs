@@ -25,7 +25,7 @@ pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Resp
     let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
     let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(ficherp.submission_date as i64, 0));
 
-    let formatted_date = datetime.format("%d-%m-%Y").to_string();
+    let formatted_date = datetime.format("%d-%m-%Y %H:%M:%S").to_string();
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
             ui.label(format!("{} | Fiche RP de {} | {}", user.global_name, ficherp.name, formatted_date));
@@ -95,7 +95,7 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, job_text_buffer: &mu
 
         let mut cache: RwLockWriteGuard<CommonMarkCache> = cache.write().expect("Can't access common_mark_cache");
 
-        let height = ui.available_size().y * 0.95;
+        let height = ui.available_size().y * 0.90;
 
         egui::ScrollArea::vertical().max_height(height).id_source("scoll_text_viewer").show(ui, |ui| {
             ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
@@ -374,11 +374,11 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             valid_entries = true;
         }
 
-        let height = ui.available_size().y * 0.90;
+        let height = ui.available_size().y * 0.85;
 
         egui::ScrollArea::vertical().id_source("scroll_lore").max_height(height).scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible).show(ui, |ui| {
             let size = ui.available_size();
-            ui.add_sized(size, egui::TextEdit::multiline(&mut ficherp.lore).code_editor().layouter(&mut layouter));
+            ui.add_sized(size, TextEdit::multiline(&mut ficherp.lore).code_editor().layouter(&mut layouter));
         });
         ui.add_space(10.0);
 
