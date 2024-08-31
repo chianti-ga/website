@@ -14,7 +14,7 @@ impl DiscordRole {
     // Function to get the role ID as a string
     pub fn role_id(&self) -> &str {
         match self {
-            DiscordRole::Admin => "1031296249254658138", // TA role
+            DiscordRole::Admin => "1166362118778523748", // Admin role
             DiscordRole::Moderator => "1259573584767090699", //Gm mod
             DiscordRole::LeadScenarist => "1143632282926727328", // Resp scenarist
             DiscordRole::Scenarist => "1143509784591605841", // scenarist
@@ -47,7 +47,7 @@ impl DiscordRole {
     #[cfg(target_arch = "wasm32")]
     pub fn get_color(&self) -> &str {
         match self {
-            DiscordRole::Admin => "#C4C9CE",
+            DiscordRole::Admin => "#106888",
             DiscordRole::Moderator => "#B8B8B8",
             DiscordRole::LeadScenarist => "#046636",
             DiscordRole::Scenarist => "#1F8B4C",
