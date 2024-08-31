@@ -1,17 +1,18 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use actix_session::Session;
-use actix_web::{get, HttpRequest, Responder, web};
-use actix_web::cookie::{Cookie, SameSite};
 use actix_web::cookie::time::{Duration, OffsetDateTime};
+use actix_web::cookie::{Cookie, SameSite};
 use actix_web::http::header;
+use actix_web::http::header::ContentType;
 use actix_web::web::Redirect;
+use actix_web::{get, web, HttpRequest, Responder};
 use log::{error, info};
 use mongodb::bson::doc;
 use mongodb::Collection;
-use oauth2::{AuthorizationCode, AuthUrl, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl};
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
+use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl};
 use reqwest::Response;
 use serde::Deserialize;
 use serde_json::Value;
@@ -20,9 +21,9 @@ use uuid::Uuid;
 use shared::discord::{DiscordAuthorizationInformation, GuildMember};
 use shared::user::Account;
 
-use crate::{AppData, CONFIG};
 use crate::utils::auth_utils::{is_auth_valid, is_user_registered, update_account_discord, update_auth_id, update_token};
 use crate::utils::config_utils::Oauth2Client;
+use crate::{AppData, CONFIG};
 
 #[derive(Deserialize, Debug, Clone)]
 struct OAuth2Callback {
@@ -80,6 +81,8 @@ pub async fn auth(req: HttpRequest, session: Session, app_data: web::Data<AppDat
 pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Session, app_data: web::Data<AppData>) -> impl Responder {
     let mut client_id_value: String = String::new();
     let mut pkce_verifier_value: String = String::new();
+    let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
+
 
     if let (Ok(Some(client_id)), Ok(Some(pkce_verifier))) = (session.get::<String>("client_id"), session.get::<String>("pkce_verif")) {
         client_id_value = client_id;
@@ -120,7 +123,9 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
                 update_token(&auth_id, &authorization_information.user.id, token_response.clone(), app_data.dbclient.clone(), &app_data.reqwest_client).await;
                 info!("Token updated for {}({})",authorization_information.user.global_name.clone(), authorization_information.user.id.clone());
 
-                return actix_web::HttpResponse::Ok().cookie(auth_cookie).body("");
+                return actix_web::HttpResponse::Found()
+                    .append_header((header::LOCATION, oauth2_info.redirect_url_egui.clone()))
+                    .cookie(auth_cookie).body("");
             }
 
             let discord_guild_member_response: Response = app_data.reqwest_client
@@ -168,12 +173,9 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
             auth_cookie.set_expires(OffsetDateTime::now_utc() + Duration::weeks(4));
             auth_cookie.set_max_age(Duration::weeks(4));
 
-            let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
-            println!("{}", oauth2_info.redirect_url_egui.to_string());
-
             actix_web::HttpResponse::Found()
-                .append_header((header::LOCATION, oauth2_info.redirect_url_egui.to_string()))
                 .cookie(auth_cookie)
+                .append_header((header::LOCATION, oauth2_info.redirect_url_egui.clone()))
                 .finish()
         }
         Err(err) => {
