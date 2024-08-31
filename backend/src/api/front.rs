@@ -1,16 +1,16 @@
 use actix_session::Session;
-use actix_web::{get, HttpRequest, HttpResponse, post, Responder, route, web};
-use mongodb::bson::{doc, Document, to_bson};
+use actix_web::{get, post, web, HttpResponse, Responder};
+use mongodb::bson::{doc, to_bson, Document};
 use mongodb::Collection;
 use serde::Deserialize;
 use serenity::futures::TryStreamExt;
 use uuid::Uuid;
 
+use crate::utils::auth_utils::is_auth_valid;
+use crate::AppData;
 use shared::fiche_rp::{FicheRP, FicheState, ReviewMessage};
 use shared::user::FrontAccount;
 use shared::website_meta::WebsiteMeta;
-use crate::AppData;
-use crate::utils::auth_utils::is_auth_valid;
 
 #[derive(Deserialize, Clone)]
 struct FrontQuery {
