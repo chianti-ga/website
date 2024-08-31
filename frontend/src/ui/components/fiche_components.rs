@@ -41,8 +41,7 @@ pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Resp
         ui.separator();
         let mut layout_job = LayoutJob::default();
 
-        RichText::new("Job : ").strong().text_style(TextStyle::Name("heading3".into()))
-                               .append_to(&mut layout_job, ui.style(), FontSelection::Default, Align::LEFT);
+        RichText::new("Job : ").strong().text_style(TextStyle::Name("heading3".into())).append_to(&mut layout_job, ui.style(), FontSelection::Default, Align::LEFT);
 
         layout_job.append(&*ficherp.job.to_string(), 0.0, TextFormat { ..Default::default() });
         ui.label(layout_job);
@@ -474,7 +473,8 @@ pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selec
         let label: RichText = RichText::new("Version").strong().text_style(TextStyle::Name("heading3".into()));
 
         let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(selected_fiche_account_version.clone().submission_date as i64, 0));
-        let selected_text = datetime.format("%d-%m-%Y").to_string();
+        let selected_text: String = datetime.format("%d-%m-%Y %H:%M:%S").to_string();
+
 
         egui::ComboBox::from_label(label).selected_text(&selected_text).show_ui(ui, |ui| {
             ficherp.version.iter().for_each(|fiche_version: &FicheVersion| {
@@ -487,7 +487,7 @@ pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selec
 
     let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(selected_fiche_account_version.submission_date as i64, 0));
 
-    let formatted_date = datetime.format("%d-%m-%Y").to_string();
+    let formatted_date = datetime.format("%d-%m-%Y %H:%M:%S").to_string();
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
             ui.label(format!("{} | Fiche RP de {} | {}", user.global_name, selected_fiche_account_version.name, formatted_date));
