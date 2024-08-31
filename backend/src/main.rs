@@ -3,24 +3,24 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use actix_cors::Cors;
 use actix_files::Files;
 use actix_session::config::CookieContentSecurity;
-use actix_session::SessionMiddleware;
 use actix_session::storage::CookieSessionStore;
-use actix_web::{App, get, HttpResponse, HttpServer, Responder};
+use actix_session::SessionMiddleware;
 use actix_web::cookie::Key;
 use actix_web::http::header::HeaderName;
-use actix_web::middleware::Logger;
+use actix_web::middleware::{Compress, Logger};
 use actix_web::rt::time;
 use actix_web::web::Data;
+use actix_web::{get, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use config::{Config, File};
 use dashmap::DashMap;
 use env_logger::Env;
 use lazy_static::lazy_static;
 use log::{error, info, warn};
-use mongodb::{Collection, Cursor};
 use mongodb::bson::{bson, doc, Document};
-use oauth2::{AuthUrl, Client, ClientId, ClientSecret, RedirectUrl, StandardRevocableToken, TokenResponse, TokenUrl};
+use mongodb::{Collection, Cursor};
 use oauth2::basic::{BasicClient, BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenResponse, BasicTokenType};
+use oauth2::{AuthUrl, Client, ClientId, ClientSecret, RedirectUrl, StandardRevocableToken, TokenResponse, TokenUrl};
 use serenity::futures::{StreamExt, TryStreamExt};
 use uuid::Uuid;
 
@@ -75,6 +75,7 @@ async fn main() -> Result<()> {
                     .cookie_content_security(CookieContentSecurity::Private)
                     .build()
             })
+            .wrap(Compress::default())
             .service(text_webhook)
             .service(embed_webhook)
             .service(auth)
