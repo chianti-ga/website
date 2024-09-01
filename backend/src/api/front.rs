@@ -135,6 +135,11 @@ pub async fn submit_comment(front_query: web::Query<FrontQuery>, mut comment: we
         if is_rate_limited(&front_query.auth_id, max_requests, time_window, &app_data) {
             return HttpResponse::TooManyRequests().body("Rate limit exceeded. Try again later.");
         }
+
+        if front_query.fiche_id.is_none() {
+            return HttpResponse::BadRequest().body("");
+        }
+
         let accounts: Collection<FrontAccount> = app_data.dbclient.database("visualis-website").collection("account");
         let meta: Collection<WebsiteMeta> = app_data.dbclient.database("visualis-website").collection("website-meta");
 
@@ -145,9 +150,15 @@ pub async fn submit_comment(front_query: web::Query<FrontQuery>, mut comment: we
         };
 
         let user_account = accounts.find_one(query).await.unwrap().expect("Can't retrieve user!");
+        for x in user_account.clone().fiches {
+            println!("{}", x.id);
+        }
+
+        println!("{}", user_account.fiches.iter().filter(|fiche| &fiche.id == &front_query.fiche_id.clone().unwrap()).count());
+
 
         if let Some(roles) = DiscordRole::from_role_ids(&user_account.discord_roles) {
-            if whitelist.contains(&user_account.discord_user.id) || roles.iter().filter(|user_role| { **user_role == DiscordRole::PlatformAdmin || **user_role == DiscordRole::Admin || **user_role == DiscordRole::LeadScenarist || **user_role == DiscordRole::Scenarist }).count() > 1 || user_account.fiches.iter().filter(|fiche| fiche.id.eq(&front_query.fiche_id.clone().unwrap())).count() > 1 {
+            if whitelist.contains(&user_account.discord_user.id) || roles.iter().filter(|user_role| { **user_role == DiscordRole::PlatformAdmin || **user_role == DiscordRole::Admin || **user_role == DiscordRole::LeadScenarist || **user_role == DiscordRole::Scenarist }).count() > 0 || user_account.fiches.iter().filter(|fiche| &fiche.id == &front_query.fiche_id.clone().unwrap()).count() > 0 {
                 let query = doc! {
                     "fiches.id": &front_query.fiche_id
                 };
@@ -187,9 +198,35 @@ pub async fn retrieve_accounts(front_query: web::Query<FrontQuery>, session: Ses
     return if is_auth_valid(&*front_query.auth_id, app_data.dbclient.clone()).await {
         let accounts: Collection<FrontAccount> = app_data.dbclient.database("visualis-website").collection("account");
 
-        let vec_front_account: Vec<FrontAccount> = accounts.find(Document::new()).await.expect("Can't retrieve accounts").try_collect().await.expect("Can't set account into vec");
+        let query = doc! {
+            "auth_id" : &front_query.auth_id
+        };
 
-        HttpResponse::Ok().json(&vec_front_account)
+        let user_account = accounts.find_one(query).await.unwrap().expect("Can't retrieve user!");
+        let meta: Collection<WebsiteMeta> = app_data.dbclient.database("visualis-website").collection("website-meta");
+        let whitelist: Vec<String> = meta.find_one(Document::new()).await.expect("Can't retrieve accounts").unwrap().whitelist;
+
+        let mut vec_front_accounts: Vec<FrontAccount> = accounts.find(Document::new()).await.expect("Can't retrieve accounts").try_collect().await.expect("Can't set account into vec");
+
+        if let Some(roles) = DiscordRole::from_role_ids(&user_account.discord_roles) {
+            if whitelist.contains(&user_account.discord_user.id) || roles.iter().filter(|user_role| { **user_role == DiscordRole::PlatformAdmin || **user_role == DiscordRole::Admin || **user_role == DiscordRole::LeadScenarist || **user_role == DiscordRole::Scenarist }).count() > 0 {
+                HttpResponse::Ok().json(&vec_front_accounts)
+            } else {
+                vec_front_accounts.iter_mut().for_each(|account| {
+                    account.fiches.iter_mut().for_each(|fiche| {
+                        fiche.messages.retain(|message| !message.is_private);
+                    });
+                });
+                HttpResponse::Ok().json(&vec_front_accounts)
+            }
+        } else {
+            vec_front_accounts.iter_mut().for_each(|account| {
+                account.fiches.iter_mut().for_each(|fiche| {
+                    fiche.messages.retain(|message| !message.is_private);
+                });
+            });
+            HttpResponse::Ok().json(&vec_front_accounts)
+        }
     } else {
         HttpResponse::Unauthorized().body("")
     };
