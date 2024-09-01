@@ -52,7 +52,7 @@ impl DiscordRole {
             DiscordRole::LeadScenarist => "#046636",
             DiscordRole::Scenarist => "#1F8B4C",
             DiscordRole::User => "#B8B8B8",
-            DiscordRole::PlatformAdmin => "#716F90",
+            DiscordRole::PlatformAdmin => "#4e26a3",
             _ => "unknown role"
         }
     }

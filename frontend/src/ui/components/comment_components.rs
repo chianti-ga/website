@@ -122,6 +122,16 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
             let mut job = LayoutJob::default();
+            if review_message.is_private {
+                job.append(
+                    &*format!("[{}] ", "PRIVÉE"),
+                    0.0,
+                    TextFormat {
+                        color: Color32::YELLOW,
+                        ..Default::default()
+                    },
+                );
+            }
             job.append(
                 &*format!("[{}] ", user_role.to_string()),
                 0.0,

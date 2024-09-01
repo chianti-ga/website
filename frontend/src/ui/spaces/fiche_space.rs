@@ -1,8 +1,8 @@
+use std::fmt;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use egui::{hex_color, Align, CursorIcon, Image, Layout, Margin, Rounding, Sense, Stroke, Widget};
 use egui_commonmark::CommonMarkCache;
-
 use shared::discord::User;
 use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, ReviewMessage};
 use shared::permissions::DiscordRole;
@@ -29,36 +29,39 @@ pub struct FicheSpace {
 
     pub background_image: Option<String>,
 
-    pub only_own_fiche: bool,
+    pub fiche_filter: FilterEnum,
 }
-
-//FIND A WAY TO UPDATE CURRENT FICHERP VIEW
-/*
-impl FicheSpace {
-    pub fn test(mut self){
-        let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
-
-        if let Some(fiche_account) = self.selected_fiche_account.clone() {
-            if let Ok(all_account) = binding.read() {
-                if all_account.contains(&fiche_account.0) {
-                    let account: FrontAccount = all_account.iter().find(|x1| x1.discord_user.id == fiche_account.0.discord_user.id).unwrap().clone();
-                    let ficherp: FicheRP = account.fiches.iter().find(|x| x.id==fiche_account.1.id).unwrap().clone();
-
-                    self.selected_fiche_account = Option::from((account, ficherp));
-                }
-            };
+#[derive(Eq, PartialEq)]
+pub enum FilterEnum {
+    OWN,
+    ALL,
+    ACCEPTED_OTHER,
+}
+impl fmt::Display for FilterEnum {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilterEnum::OWN => write!(f, "Mes Fiches"),
+            FilterEnum::ALL => write!(f, "Mode staff"),
+            FilterEnum::ACCEPTED_OTHER => write!(f, "Fiches des autres"),
         }
     }
-}*/
+}
 
 impl eframe::App for FicheSpace {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        //Global variables
+        let role_binding = SELECTED_ROLE.clone();
+        let user_role: RwLockReadGuard<DiscordRole> = role_binding.read().unwrap();
+
+        let auth_binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
+        let auth_lock: RwLockReadGuard<AuthInfo> = auth_binding.read().unwrap();
+        let user_account: FrontAccount = auth_lock.clone().account.unwrap();
+
+        let is_staff: bool = *user_role == DiscordRole::PlatformAdmin || *user_role == DiscordRole::Admin || *user_role == DiscordRole::LeadScenarist || *user_role == DiscordRole::Scenarist;
+
         if self.is_previewing_fiche {
             egui::Window::new("Preview").open(&mut self.is_previewing_fiche).default_size([640.0, 960.0]).show(ctx, |ui| {
-                let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
-                let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
-                let account = auth_lock.clone().account.unwrap();
-                let user: User = account.discord_user;
+                let user: User = user_account.clone().discord_user;
                 ficherp_viewer_window(ui, &self.new_fiche.clone().unwrap(), &user, self.common_mark_cache.clone());
             });
         }
@@ -82,10 +85,7 @@ impl eframe::App for FicheSpace {
         if self.is_writing_message {
             if self.review_message.is_some() {
                 let window = egui::Window::new("Ecriture commentaire").open(&mut self.is_writing_message).default_size([640.0, 600.0]).resizable(false).show(ctx, |ui| {
-                    let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
-                    let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
-                    let account = auth_lock.clone().account.unwrap();
-                    let user: User = account.discord_user;
+                    let user: User = user_account.clone().discord_user;
 
                     if let Some(review_message) = &mut self.review_message {
                         if edit_comment_window(ui, self.selected_fiche_account.clone().unwrap().1.id, review_message, self.common_mark_cache.clone(), &mut self.selected_fiche_account) {
@@ -101,7 +101,7 @@ impl eframe::App for FicheSpace {
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let frame = egui::Frame::none()
+            let mut frame = egui::Frame::none()
                 .fill(hex_color!("#262626"))
                 .stroke(Stroke {
                     width: 2.0,
@@ -128,51 +128,52 @@ impl eframe::App for FicheSpace {
 
             ui.columns(3, |mut columns| {
                 columns[0].with_layout(Layout::top_down(Align::Center), |ui| {
+                    ui.horizontal(|ui| {
+                        if ui.button(get_string("ficherp.create.fiche")).clicked() {
+                            self.selected_fiche_account = None;
+                            self.new_fiche = Option::from(FicheRP {
+                                id: "".to_string(),
+                                name: "".to_string(),
+                                job: Job::ClassD,
+                                description: "".to_string(),
+                                lore: "".to_string(),
+                                submission_date: 0,
+                                messages: vec![],
+                                version: vec![],
+                                state: FicheState::Waiting,
+                            });
+
+                            self.is_viewing_fiche_history = false;
+                            self.is_writing_message = false;
+                            self.is_previewing_fiche = false;
+                            self.is_editing_existing_fiche = false;
+                            self.background_image = None;
+                        }
+                        ui.label(get_string("ficherp.filter.own_fiche"));
+
+                        egui::ComboBox::from_id_source("role_combo").selected_text(self.fiche_filter.to_string()).show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.fiche_filter, FilterEnum::ACCEPTED_OTHER, FilterEnum::ACCEPTED_OTHER.to_string());
+                            ui.selectable_value(&mut self.fiche_filter, FilterEnum::OWN, FilterEnum::OWN.to_string());
+                        });
+                    });
+
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
                         if let Ok(all_account) = binding.read() {
                             ui.vertical(|ui| {
-                                ui.horizontal(|ui| {
-                                    //TODO: FILTERING, creation etc
-                                    if ui.button(get_string("ficherp.create.fiche")).clicked() {
-                                        self.selected_fiche_account = None;
-                                        self.new_fiche = Option::from(FicheRP {
-                                            id: "".to_string(),
-                                            name: "".to_string(),
-                                            job: Job::ClassD,
-                                            description: "".to_string(),
-                                            lore: "".to_string(),
-                                            submission_date: 0,
-                                            messages: vec![],
-                                            version: vec![],
-                                            state: FicheState::Waiting,
-                                        });
-
-                                        self.is_viewing_fiche_history = false;
-                                        self.is_writing_message = false;
-                                        self.is_previewing_fiche = false;
-                                        self.is_editing_existing_fiche = false;
-                                        self.background_image = None;
-                                    }
-                                });
-
-                                ui.add_space(10.0);
-
-                                let auth_binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
-                                let auth_lock: RwLockReadGuard<AuthInfo> = auth_binding.read().unwrap();
-                                let user_account: FrontAccount = auth_lock.clone().account.unwrap();
-                                let role_binding = SELECTED_ROLE.clone();
-                                let user_role: RwLockReadGuard<DiscordRole> = role_binding.read().unwrap();
-
-                                all_account.iter().filter(|account| {
-                                    if !account.fiches.is_empty() && (*user_role == DiscordRole::PlatformAdmin || *user_role == DiscordRole::Admin || *user_role == DiscordRole::LeadScenarist || *user_role == DiscordRole::Scenarist) {
-                                        true
-                                    } else {
-                                        account.discord_user == user_account.discord_user
-                                    }
-                                }).for_each(|account| {
+                                all_account.iter().for_each(|account| {
                                     ui.vertical(|ui| {
-                                        for ficherp in &account.fiches {
+                                        &account.fiches.iter().filter(|ficherp| {
+                                            if !account.fiches.is_empty() && is_staff {
+                                                true
+                                            } else {
+                                                match self.fiche_filter {
+                                                    FilterEnum::OWN => account.discord_user == user_account.discord_user,
+                                                    FilterEnum::ALL => true,
+                                                    FilterEnum::ACCEPTED_OTHER => ficherp.state == FicheState::Accepted
+                                                }
+                                            }
+                                        }).for_each(|ficherp| {
                                             let account_ref: &FrontAccount = account;
                                             let ficherp_ref: &FicheRP = ficherp;
                                             frame.show(ui, |ui| {
@@ -191,7 +192,7 @@ impl eframe::App for FicheSpace {
                                                     self.background_image = None;
                                                 };
                                             });
-                                        }
+                                        });
                                     });
                                 });
                             });
@@ -224,14 +225,16 @@ impl eframe::App for FicheSpace {
                     let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
                     if let Ok(all_account) = binding.read() {
                         ui.vertical(|ui| {
-                            if self.selected_fiche_account.is_some() {
+                            if let Some(selected_fiche_account) = &self.selected_fiche_account {
+
                                 ui.horizontal(|ui| {
+                                    if selected_fiche_account.0.discord_user != user_account.discord_user && !is_staff {
+                                        ui.disable()
+                                    }
                                     if ui.button(get_string("ficherp.review_message.create")).clicked() {
-                                        let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
-                                        let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
-                                        let account = auth_lock.clone().account.unwrap();
+
                                         self.review_message = Option::from(ReviewMessage {
-                                            discord_id: account.discord_user.id,
+                                            discord_id: user_account.clone().discord_user.id,
                                             content: "".to_string(),
                                             date: 0,
                                             is_private: false,
@@ -241,20 +244,19 @@ impl eframe::App for FicheSpace {
                                         self.is_writing_message = true;
                                     }
                                 });
-                            }
+                                if selected_fiche_account.0.discord_user == user_account.discord_user || is_staff {
+                                    ui.add_space(10.0);
 
-                            ui.add_space(10.0);
-
-                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                if self.selected_fiche_account.is_some() {
-                                    self.selected_fiche_account.clone().unwrap().1.messages.iter().for_each(|review_message: &ReviewMessage| {
-                                        frame.show(ui, |ui| {
-                                            comment_bubble(ui, &review_message, self.common_mark_cache.clone())
+                                    egui::ScrollArea::vertical().show(ui, |ui| {
+                                        selected_fiche_account.1.messages.iter().for_each(|review_message: &ReviewMessage| {
+                                            frame.show(ui, |ui| {
+                                                comment_bubble(ui, &review_message, self.common_mark_cache.clone())
+                                            });
                                         });
+                                        ui.add_space(15.0);
                                     });
-                                    ui.add_space(15.0);
                                 }
-                            });
+                            }
                         });
                     };
                 });

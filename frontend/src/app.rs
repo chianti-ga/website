@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, TryLockResult};
 
 use crate::backend_handler::{authenticate, get_oath2_url};
 use crate::ui::select_space::SpacePanel;
-use crate::ui::spaces::fiche_space::FicheSpace;
+use crate::ui::spaces::fiche_space::{FicheSpace, FilterEnum};
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
 use egui::style::ScrollStyle;
@@ -101,7 +101,7 @@ impl App {
                 is_viewing_fiche_history: false,
                 is_editing_existing_fiche: false,
                 background_image: None,
-                only_own_fiche: false,
+                fiche_filter: FilterEnum::OWN,
             },
 
             space_panel: SpacePanel::new(),
