@@ -161,6 +161,7 @@ impl eframe::App for FicheSpace {
                         let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
                         if let Ok(all_account) = binding.read() {
                             ui.vertical(|ui| {
+                                ui.add_space(10.0);
                                 all_account.iter().for_each(|account| {
                                     ui.vertical(|ui| {
                                         &account.fiches.iter().filter(|ficherp| {
@@ -243,13 +244,14 @@ impl eframe::App for FicheSpace {
                                     }
                                 });
                                 if selected_fiche_account.0.discord_user == user_account.discord_user || is_staff {
-                                    ui.add_space(10.0);
-
                                     egui::ScrollArea::vertical().show(ui, |ui| {
                                         selected_fiche_account.1.messages.iter().for_each(|review_message: &ReviewMessage| {
-                                            frame.show(ui, |ui| {
-                                                comment_bubble(ui, &review_message, self.common_mark_cache.clone())
-                                            });
+                                            if !review_message.is_private || (review_message.is_private && is_staff) {
+                                                ui.add_space(10.0);
+                                                frame.show(ui, |ui| {
+                                                    comment_bubble(ui, &review_message, self.common_mark_cache.clone())
+                                                });
+                                            }
                                         });
                                         ui.add_space(15.0);
                                     });

@@ -142,6 +142,9 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
 
     let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
 
+    ficherp.submission_date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
             ui.label(format!("{} | Composition de votre Fiche RP", &user.global_name));
