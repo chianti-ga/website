@@ -5,12 +5,14 @@ use serenity::all::{Colour, CreateEmbed, ExecuteWebhook, Http, Webhook};
 
 use crate::utils::config_utils::WebhookEntry;
 use crate::CONFIG;
+#[deprecated]
 
 #[derive(Deserialize)]
 pub struct WebhookForm {
     webhook: String,
     content: String,
 }
+#[deprecated]
 #[derive(Clone)]
 #[derive(Deserialize)]
 //FIXME: Wrong type on some field, not important for now because unused
@@ -27,7 +29,7 @@ pub struct EmbedWebhookForm {
     author: Option<String>,
     fields: Option<String>,
 }
-
+#[deprecated]
 #[get("/api/discord/text_webhook/")]
 pub async fn text_webhook(form: Form<WebhookForm>) -> impl Responder {
     let chosen_webhook_entry: &WebhookEntry = match retrieved_webhook(&form.webhook) {
@@ -49,6 +51,7 @@ pub async fn text_webhook(form: Form<WebhookForm>) -> impl Responder {
     }
 }
 //FIXME: Usable but not finished
+#[deprecated]
 #[post("/api/discord/embed_webhook/")]
 pub async fn embed_webhook(form: Form<EmbedWebhookForm>) -> HttpResponse {
     let chosen_webhook_entry: &WebhookEntry = match retrieved_webhook(&form.webhook) {
@@ -87,7 +90,7 @@ pub async fn embed_webhook(form: Form<EmbedWebhookForm>) -> HttpResponse {
         Err(err) => HttpResponse::InternalServerError().body(format!("Error executing webhook: {}", err)),
     }
 }
-
+#[deprecated]
 fn retrieved_webhook<'a>(target_webhook: &String) -> Option<&'a WebhookEntry> {
     return CONFIG.webhooks_list.iter().filter(|x| x.webhook.to_lowercase() == target_webhook.to_lowercase()).next();
 }
