@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::utils::auth_utils::is_auth_valid;
 use crate::{is_rate_limited, AppData};
 use shared::fiche_rp::{FicheRP, FicheState, ReviewMessage};
+use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 use shared::website_meta::WebsiteMeta;
 
@@ -89,9 +90,8 @@ pub async fn submit_ficherp_modif(front_query: web::Query<FrontQuery>, mut fiche
 
         // Call the rate limit function
         if is_rate_limited(&front_query.auth_id, max_requests, time_window, &app_data) {
-            return HttpResponse::TooManyRequests().body("Rate limit exceeded. Try again later.")
+            return HttpResponse::TooManyRequests().body("Rate limit exceeded. Try again later.");
         }
-
 
         let accounts: Collection<FrontAccount> = app_data.dbclient.database("visualis-website").collection("account");
 
@@ -133,39 +133,53 @@ pub async fn submit_comment(front_query: web::Query<FrontQuery>, mut comment: we
 
         // Call the rate limit function
         if is_rate_limited(&front_query.auth_id, max_requests, time_window, &app_data) {
-            return HttpResponse::TooManyRequests().body("Rate limit exceeded. Try again later.")
+            return HttpResponse::TooManyRequests().body("Rate limit exceeded. Try again later.");
         }
-
-
         let accounts: Collection<FrontAccount> = app_data.dbclient.database("visualis-website").collection("account");
+        let meta: Collection<WebsiteMeta> = app_data.dbclient.database("visualis-website").collection("website-meta");
+
+        let whitelist: Vec<String> = meta.find_one(Document::new()).await.expect("Can't retrieve accounts").unwrap().whitelist;
 
         let query = doc! {
-            "fiches.id": &front_query.fiche_id
-        };
-        let update = if comment.set_state == FicheState::Comment {
-            doc! {
-                "$push": {"fiches.$.messages": to_bson(&comment.into_inner()).unwrap()}
-            }
-        } else {
-            doc! {
-                "$set": {"fiches.$.state": to_bson(&comment.set_state).unwrap()},
-                "$push": {"fiches.$.messages": to_bson(&comment.into_inner()).unwrap()}
-            }
+            "auth_id" : &front_query.auth_id
         };
 
-        match accounts.update_one(query, update).await {
-            Ok(update_result) => {
-                if update_result.matched_count > 0 {
-                    HttpResponse::Ok().body("Comment inserted successfully")
+        let user_account = accounts.find_one(query).await.unwrap().expect("Can't retrieve user!");
+
+        if let Some(roles) = DiscordRole::from_role_ids(&user_account.discord_roles) {
+            if whitelist.contains(&user_account.discord_user.id) || roles.iter().filter(|user_role| { **user_role == DiscordRole::PlatformAdmin || **user_role == DiscordRole::Admin || **user_role == DiscordRole::LeadScenarist || **user_role == DiscordRole::Scenarist }).count() > 1 || user_account.fiches.iter().filter(|fiche| fiche.id.eq(&front_query.fiche_id.clone().unwrap())).count() > 1 {
+                let query = doc! {
+                    "fiches.id": &front_query.fiche_id
+                };
+                let update = if comment.set_state == FicheState::Comment {
+                    doc! {
+                        "$push": {"fiches.$.messages": to_bson(&comment.into_inner()).unwrap()}
+                    }
                 } else {
-                    HttpResponse::NotFound().body("Account not found")
+                    doc! {
+                        "$set": {"fiches.$.state": to_bson(&comment.set_state).unwrap()},
+                        "$push": {"fiches.$.messages": to_bson(&comment.into_inner()).unwrap()}
+                    }
+                };
+                match accounts.update_one(query, update).await {
+                    Ok(update_result) => {
+                        if update_result.matched_count > 0 {
+                            HttpResponse::Ok().body("Comment inserted successfully")
+                        } else {
+                            HttpResponse::NotFound().body("Account not found")
+                        }
+                    }
+                    Err(_) => HttpResponse::InternalServerError().body("Failed to update account"),
                 }
+            } else {
+                HttpResponse::Unauthorized().body("")
             }
-            Err(_) => HttpResponse::InternalServerError().body("Failed to update account"),
+        } else {
+            HttpResponse::Unauthorized().body("")
         }
     } else {
         HttpResponse::Unauthorized().body("")
-    };
+    }
 }
 
 #[get("/api/front/retrieve_accounts")]
