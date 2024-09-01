@@ -1,4 +1,3 @@
-# API du site
+# Site web pour le rp
 
-![working](https://media1.tenor.com/m/YeyWf_YP7PcAAAAC/construct-construction.gif)
-
+(doc soon)
