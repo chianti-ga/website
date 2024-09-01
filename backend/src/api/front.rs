@@ -179,7 +179,7 @@ pub async fn submit_comment(front_query: web::Query<FrontQuery>, mut comment: we
         }
     } else {
         HttpResponse::Unauthorized().body("")
-    }
+    };
 }
 
 #[get("/api/front/retrieve_accounts")]

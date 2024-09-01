@@ -6,7 +6,6 @@ use serenity::all::{Colour, CreateEmbed, ExecuteWebhook, Http, Webhook};
 use crate::utils::config_utils::WebhookEntry;
 use crate::CONFIG;
 #[deprecated]
-
 #[derive(Deserialize)]
 pub struct WebhookForm {
     webhook: String,
