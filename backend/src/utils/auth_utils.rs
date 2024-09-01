@@ -1,11 +1,11 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::info;
-use mongodb::bson::{doc, Document, to_bson};
+use mongodb::bson::{doc, to_bson, Document};
 use mongodb::Collection;
-use oauth2::{RefreshToken, TokenResponse};
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::reqwest::async_http_client;
+use oauth2::{RefreshToken, TokenResponse};
 use reqwest::{Client, Response};
 use serde_json::Value;
 use uuid::Uuid;

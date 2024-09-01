@@ -1,10 +1,10 @@
-use actix_web::{get, HttpResponse, post, Responder};
 use actix_web::web::Form;
+use actix_web::{get, post, HttpResponse, Responder};
 use serde::Deserialize;
 use serenity::all::{Colour, CreateEmbed, ExecuteWebhook, Http, Webhook};
 
-use crate::CONFIG;
 use crate::utils::config_utils::WebhookEntry;
+use crate::CONFIG;
 
 #[derive(Deserialize)]
 pub struct WebhookForm {

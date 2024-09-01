@@ -83,7 +83,6 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
     let mut pkce_verifier_value: String = String::new();
     let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
 
-
     if let (Ok(Some(client_id)), Ok(Some(pkce_verifier))) = (session.get::<String>("client_id"), session.get::<String>("pkce_verif")) {
         client_id_value = client_id;
         pkce_verifier_value = pkce_verifier;

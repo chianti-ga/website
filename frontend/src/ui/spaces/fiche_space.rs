@@ -226,13 +226,11 @@ impl eframe::App for FicheSpace {
                     if let Ok(all_account) = binding.read() {
                         ui.vertical(|ui| {
                             if let Some(selected_fiche_account) = &self.selected_fiche_account {
-
                                 ui.horizontal(|ui| {
                                     if selected_fiche_account.0.discord_user != user_account.discord_user && !is_staff {
                                         ui.disable()
                                     }
                                     if ui.button(get_string("ficherp.review_message.create")).clicked() {
-
                                         self.review_message = Option::from(ReviewMessage {
                                             discord_id: user_account.clone().discord_user.id,
                                             content: "".to_string(),

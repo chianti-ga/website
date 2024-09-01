@@ -69,7 +69,6 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, job_text_buffer: &mu
             }
         });
 
-
         ui.horizontal(|ui| {
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 ui.add(avatar_image);
@@ -474,7 +473,6 @@ pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selec
 
         let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(selected_fiche_account_version.clone().submission_date as i64, 0));
         let selected_text: String = datetime.format("%d-%m-%Y %H:%M:%S").to_string();
-
 
         egui::ComboBox::from_label(label).selected_text(&selected_text).show_ui(ui, |ui| {
             ficherp.version.iter().for_each(|fiche_version: &FicheVersion| {
