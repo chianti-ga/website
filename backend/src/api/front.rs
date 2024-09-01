@@ -4,10 +4,11 @@ use mongodb::bson::{doc, to_bson, Document};
 use mongodb::Collection;
 use serde::Deserialize;
 use serenity::futures::TryStreamExt;
+use std::time::Duration;
 use uuid::Uuid;
 
 use crate::utils::auth_utils::is_auth_valid;
-use crate::AppData;
+use crate::{is_rate_limited, AppData};
 use shared::fiche_rp::{FicheRP, FicheState, ReviewMessage};
 use shared::user::FrontAccount;
 use shared::website_meta::WebsiteMeta;
@@ -83,6 +84,15 @@ pub async fn submit_ficherp(front_query: web::Query<FrontQuery>, mut ficherp: we
 #[post("/api/front/submit_ficherp_modif")]
 pub async fn submit_ficherp_modif(front_query: web::Query<FrontQuery>, mut ficherp: web::Json<FicheRP>, app_data: web::Data<AppData>) -> impl Responder {
     return if is_auth_valid(&*front_query.auth_id, app_data.dbclient.clone()).await {
+        let max_requests = 5;
+        let time_window = Duration::from_secs(3600); // 1 hour
+
+        // Call the rate limit function
+        if is_rate_limited(&front_query.auth_id, max_requests, time_window, &app_data) {
+            return HttpResponse::TooManyRequests().body("Rate limit exceeded. Try again later.")
+        }
+
+
         let accounts: Collection<FrontAccount> = app_data.dbclient.database("visualis-website").collection("account");
 
         let query = doc! {
@@ -118,6 +128,15 @@ pub async fn submit_ficherp_modif(front_query: web::Query<FrontQuery>, mut fiche
 #[post("/api/front/submit_comment")]
 pub async fn submit_comment(front_query: web::Query<FrontQuery>, mut comment: web::Json<ReviewMessage>, app_data: web::Data<AppData>) -> impl Responder {
     return if is_auth_valid(&*front_query.auth_id, app_data.dbclient.clone()).await {
+        let max_requests = 3;
+        let time_window = Duration::from_secs(300); // 1 hour
+
+        // Call the rate limit function
+        if is_rate_limited(&front_query.auth_id, max_requests, time_window, &app_data) {
+            return HttpResponse::TooManyRequests().body("Rate limit exceeded. Try again later.")
+        }
+
+
         let accounts: Collection<FrontAccount> = app_data.dbclient.database("visualis-website").collection("account");
 
         let query = doc! {

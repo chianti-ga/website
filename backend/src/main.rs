@@ -10,7 +10,7 @@ use actix_web::http::header::HeaderName;
 use actix_web::middleware::{Compress, Logger};
 use actix_web::rt::time;
 use actix_web::web::Data;
-use actix_web::{get, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use config::{Config, File};
 use dashmap::DashMap;
@@ -43,6 +43,12 @@ struct AppData {
     client_map: DashMap<String, Client<BasicErrorResponse, BasicTokenResponse, BasicTokenType, BasicTokenIntrospectionResponse, StandardRevocableToken, BasicRevocationErrorResponse>>,
     dbclient: mongodb::Client,
     reqwest_client: reqwest::Client,
+    rate_limit_map: DashMap<String, RateLimitData>,
+}
+
+pub struct RateLimitData {
+    request_count: usize,
+    first_request_time: Instant,
 }
 
 #[actix_web::main]
@@ -55,13 +61,14 @@ async fn main() -> Result<()> {
         client_map: DashMap::new(),
         dbclient: dbclient.clone(),
         reqwest_client: reqwest::Client::new(),
+        rate_limit_map: Default::default(),
     });
 
     update_token_thread(dbclient.clone()).await;
 
     HttpServer::new(move || {
         App::new()
-            .wrap(Logger::default())
+            .wrap(Logger::default())  // Global middlewares
             .wrap(Cors::default()
                 .allowed_origin("http://localhost:8080")
                 .allowed_origin("http://localhost:2828")
@@ -136,4 +143,30 @@ pub async fn update_token_thread(dbclient: mongodb::Client) {
             }
         }
     });
+}
+
+pub fn is_rate_limited(
+    auth_id: &str,
+    max_requests: usize,
+    time_window: Duration,
+    app_data: &web::Data<AppData>,
+) -> bool {
+    let mut rate_limit_data = app_data.rate_limit_map.entry(auth_id.to_string()).or_insert_with(|| RateLimitData {
+        request_count: 0,
+        first_request_time: Instant::now(),
+    });
+
+    if rate_limit_data.first_request_time.elapsed() < time_window {
+        if rate_limit_data.request_count >= max_requests {
+            true
+        } else {
+            rate_limit_data.request_count += 1;
+            false
+        }
+    } else {
+        // Reset the counter if the time window has passed
+        rate_limit_data.request_count = 1;
+        rate_limit_data.first_request_time = Instant::now();
+        false
+    }
 }
