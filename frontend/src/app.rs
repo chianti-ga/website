@@ -3,12 +3,14 @@ use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, TryLockResult};
 
 use crate::backend_handler::{authenticate, get_oath2_url};
 use crate::ui::select_space::SpacePanel;
+use crate::ui::spaces::admin_space::AdminSpace;
 use crate::ui::spaces::fiche_space::{FicheSpace, FilterEnum};
+use crate::BUILD_INFO;
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
 use egui::style::ScrollStyle;
 use egui::FontFamily::Proportional;
-use egui::{hex_color, Align, Button, Color32, FontId, Image, Layout, RichText};
+use egui::{hex_color, Align, Button, Color32, FontId, Hyperlink, Image, Layout, RichText};
 use egui_commonmark::CommonMarkCache;
 use json_gettext::{get_text, static_json_gettext_build, JSONGetText};
 use lazy_static::lazy_static;
@@ -23,6 +25,7 @@ pub struct App {
     // PANELS
     pub fiche_space: FicheSpace,
     pub space_panel: SpacePanel,
+    pub admin_space: AdminSpace,
 }
 #[derive(Clone)]
 pub struct AuthInfo {
@@ -58,6 +61,8 @@ pub enum Space {
     EscienceSpace,
     EsecuritySpace,
 }
+
+
 
 lazy_static! {
     pub static ref SELECTED_ROLE:Arc<RwLock<DiscordRole>> = Arc::new(RwLock::new(DiscordRole::User));
@@ -102,6 +107,20 @@ impl App {
                 is_editing_existing_fiche: false,
                 background_image: None,
                 fiche_filter: FilterEnum::OWN,
+            },
+            admin_space: AdminSpace {
+                common_mark_cache: Arc::new(RwLock::new(CommonMarkCache::default())),
+                selected_fiche_account: None,
+                selected_fiche_version: None,
+                selected_account: None,
+                new_fiche: None,
+                review_message: None,
+                job_text_buffer: "".to_string(),
+                is_previewing_fiche: false,
+                is_writing_message: false,
+                is_viewing_fiche_history: false,
+                is_editing_existing_fiche: false,
+                background_image: None,
             },
 
             space_panel: SpacePanel::new(),
@@ -198,7 +217,7 @@ impl eframe::App for App {
             match selected_space {
                 Space::Eselection => self.space_panel.update(ctx, frame),
                 Space::EspaceSelection => {}
-                Space::EadminSpace => {}
+                Space::EadminSpace => self.admin_space.update(ctx, frame),
                 Space::EficheSpace => self.fiche_space.update(ctx, frame),
                 Space::EscienceSpace => {}
                 Space::EsecuritySpace => {}
@@ -232,8 +251,12 @@ pub fn image_resolver(image_name: &str) -> String {
 
 fn footer(ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
         ui.label("© Project Visualis 2024");
+        ui.label(&BUILD_INFO.git_tag);
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            ui.add(Hyperlink::from_label_and_url("Conditions Générales d'Utilisation", "cgu.html").open_in_new_tab(true));
+            ui.add(Hyperlink::from_label_and_url("Politique de Confidentialité", "privacy.html").open_in_new_tab(true));
+        });
     });
 }
 

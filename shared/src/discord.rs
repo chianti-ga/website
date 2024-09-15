@@ -6,7 +6,7 @@ pub struct DiscordAuthorizationInformation {
     pub user: User,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct User {
     pub id: String,
     pub global_name: String,

@@ -6,6 +6,7 @@ pub enum DiscordRole {
     Admin,
     Moderator,
     LeadScenarist,
+    LeadMed,
     Scenarist,
     User,
 }
@@ -17,6 +18,8 @@ impl DiscordRole {
             DiscordRole::Admin => "1166362118778523748", // Admin role
             DiscordRole::Moderator => "1259573584767090699", //Gm mod
             DiscordRole::LeadScenarist => "1143632282926727328", // Resp scenarist
+            DiscordRole::LeadMed => "1147967653164634112", // Resp med
+
             DiscordRole::Scenarist => "1143509784591605841", // scenarist
             _ => "none"
         }
@@ -27,6 +30,7 @@ impl DiscordRole {
             "1031296249254658138" => Some(DiscordRole::Admin),
             "1259573584767090699" => Some(DiscordRole::Moderator),
             "1143632282926727328" => Some(DiscordRole::LeadScenarist),
+            "1147967653164634112" => Some(DiscordRole::LeadMed),
             "1143509784591605841" => Some(DiscordRole::Scenarist),
             _ => None,
         }
@@ -40,7 +44,7 @@ impl DiscordRole {
             DiscordRole::Scenarist => "Cette personne est un scénariste.\n Il donne son avis sur votre fiche.\nIl peut vous demander des modifications ou la refuser.",
             DiscordRole::User => "Utilisateur",
             DiscordRole::PlatformAdmin => "Administrateur platforme",
-            _ => "unknown role"
+            DiscordRole::LeadMed => "Cette personne est le responsable médecine.\nIl décide de l'acceptation finale de votre fiche pour la branche médecine."
         }
     }
 
@@ -78,6 +82,7 @@ impl fmt::Display for DiscordRole {
             DiscordRole::LeadScenarist => write!(f, "Responsable scénariste"),
             DiscordRole::Scenarist => write!(f, "Scénariste"),
             DiscordRole::User => write!(f, "Utilisateur"),
+            DiscordRole::LeadMed => write!(f, "Responsable médecine"),
         }
     }
 }

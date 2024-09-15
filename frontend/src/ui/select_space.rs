@@ -1,8 +1,9 @@
+use crate::app::{image_resolver, Space, SELECTED_ROLE, SELECTED_SPACE};
 use eframe::egui;
 use eframe::egui::{Align, Image, Layout};
 use egui::Button;
-
-use crate::app::{image_resolver, Space, SELECTED_SPACE};
+use shared::permissions::DiscordRole;
+use std::sync::RwLockReadGuard;
 
 pub struct SpacePanel {}
 impl SpacePanel {
@@ -15,21 +16,30 @@ impl eframe::App for SpacePanel {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.columns(5, |mut columns| {
-                /*columns[0].with_layout(Layout::top_down(Align::Center), |ui| {
-                    let image: Image = Image::new(image_resolver("admin_expo.svg"))
-                        .fit_to_original_size(1.0)
-                        .max_width(ui.available_width() - 20.0)
-                        .maintain_aspect_ratio(true)
-                        .show_loading_spinner(true);
+                let role_binding = SELECTED_ROLE.clone();
+                let user_role: RwLockReadGuard<DiscordRole> = role_binding.read().unwrap();
 
-                    ui.centered_and_justified(|ui| {
-                        let admin_space_btn = Button::image_and_text(image, "");
+                let is_staff: bool = *user_role == DiscordRole::PlatformAdmin || *user_role == DiscordRole::Admin || *user_role == DiscordRole::LeadScenarist || *user_role == DiscordRole::Scenarist;
 
-                        if ui.add(admin_space_btn).clicked() {};
+                if is_staff {
+                    columns[0].with_layout(Layout::top_down(Align::Center), |ui| {
+                        let image: Image = Image::new(image_resolver("admin_expo.svg"))
+                            .fit_to_original_size(1.0)
+                            .max_width(ui.available_width() - 20.0)
+                            .maintain_aspect_ratio(true)
+                            .show_loading_spinner(true);
+
+                        ui.centered_and_justified(|ui| {
+                            let admin_space_btn = Button::image_and_text(image, "");
+
+                            if ui.add(admin_space_btn).clicked() {
+                                SELECTED_SPACE.write().unwrap().selected_space = Space::EadminSpace;
+                            }
+                        });
                     });
-                });
+                }
 
-                columns[1].with_layout(Layout::top_down(Align::Center), |ui| {
+                /*columns[1].with_layout(Layout::top_down(Align::Center), |ui| {
                     let image: Image = Image::new(image_resolver("rapport_exp.svg"))
                         .fit_to_original_size(1.0)
                         .max_width(ui.available_width() - 20.0)

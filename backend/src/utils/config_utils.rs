@@ -5,16 +5,9 @@ use serde::Deserialize;
 pub struct Configuration {
     pub port: u16,
     pub domain: String,
-    pub webhooks_list: Vec<WebhookEntry>,
+    pub scena_webhook: String,
     pub mongo_db_uri: String,
     pub oauth2client: Oauth2Client,
-}
-#[derive(Deserialize)]
-#[derive(Clone)]
-pub struct WebhookEntry {
-    pub webhook: String,
-    pub url: String,
-    pub name: String,
 }
 #[derive(Deserialize)]
 #[derive(Clone)]

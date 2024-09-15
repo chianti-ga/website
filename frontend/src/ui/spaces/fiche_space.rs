@@ -36,6 +36,7 @@ pub enum FilterEnum {
     OWN,
     ALL,
     ACCEPTED_OTHER,
+    WAITING
 }
 impl fmt::Display for FilterEnum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -43,6 +44,7 @@ impl fmt::Display for FilterEnum {
             FilterEnum::OWN => write!(f, "Mes Fiches"),
             FilterEnum::ALL => write!(f, "Mode staff"),
             FilterEnum::ACCEPTED_OTHER => write!(f, "Fiches des autres"),
+            FilterEnum::WAITING => write!(f, "En attente"),
         }
     }
 }
@@ -154,6 +156,9 @@ impl eframe::App for FicheSpace {
                         egui::ComboBox::from_id_source("role_combo").selected_text(self.fiche_filter.to_string()).show_ui(ui, |ui| {
                             ui.selectable_value(&mut self.fiche_filter, FilterEnum::ACCEPTED_OTHER, FilterEnum::ACCEPTED_OTHER.to_string());
                             ui.selectable_value(&mut self.fiche_filter, FilterEnum::OWN, FilterEnum::OWN.to_string());
+                            if is_staff {
+                                ui.selectable_value(&mut self.fiche_filter, FilterEnum::WAITING, FilterEnum::WAITING.to_string());
+                            }
                         });
                     });
 
@@ -161,7 +166,6 @@ impl eframe::App for FicheSpace {
                         let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
                         if let Ok(all_account) = binding.read() {
                             ui.vertical(|ui| {
-                                ui.add_space(10.0);
                                 all_account.iter().for_each(|account| {
                                     ui.vertical(|ui| {
                                         &account.fiches.iter().filter(|ficherp| {
@@ -171,10 +175,13 @@ impl eframe::App for FicheSpace {
                                                 match self.fiche_filter {
                                                     FilterEnum::OWN => account.discord_user == user_account.discord_user,
                                                     FilterEnum::ALL => true,
-                                                    FilterEnum::ACCEPTED_OTHER => ficherp.state == FicheState::Accepted
+                                                    FilterEnum::ACCEPTED_OTHER => ficherp.state == FicheState::Accepted,
+                                                    FilterEnum::WAITING => ficherp.state == FicheState::Waiting
                                                 }
                                             }
                                         }).for_each(|ficherp| {
+                                            ui.add_space(5.0);
+
                                             let account_ref: &FrontAccount = account;
                                             let ficherp_ref: &FicheRP = ficherp;
                                             frame.show(ui, |ui| {
@@ -212,7 +219,7 @@ impl eframe::App for FicheSpace {
                                 ui.add(Image::new(&*bg_image).fit_to_original_size(0.5));
                             } else if let Some(ficherp) = &mut self.new_fiche {
                                 frame.show(ui, |ui| {
-                                    if ficherp_edit(ui, ficherp, &mut self.is_previewing_fiche, &mut self.job_text_buffer, &mut self.is_editing_existing_fiche, &mut self.background_image) {
+                                    if ficherp_edit(ui, ficherp, &mut self.is_previewing_fiche, &mut self.job_text_buffer, &mut self.is_editing_existing_fiche, &mut self.background_image, &None) {
                                         self.is_viewing_fiche_history = false;
                                         self.is_writing_message = false;
                                         self.is_previewing_fiche = false;

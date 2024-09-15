@@ -96,6 +96,20 @@ pub fn post_ficherp(ficherp: &FicheRP) {
         }
     });
 }
+pub fn post_ficherp_admin(ficherp: &FicheRP, target_account: &FrontAccount) {
+    let auth_id: String = wasm_cookies::get("auth_id").unwrap().unwrap();
+    let api_url: String = format!("{}api/front/submit_ficherp_admin?auth_id={}&user_id={}", get_api_path(), auth_id, target_account.discord_user.id);
+    let request: Request = post_json(api_url, serde_json::to_string(ficherp).unwrap().into_bytes());
+
+    ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
+        let mut result = result.unwrap();
+        debug!("{}", &result.text().unwrap());
+
+        if result.status == 200 {
+            authenticate();
+        }
+    });
+}
 
 pub fn post_ficherp_modif(ficherp: &FicheRP) {
     let auth_id: String = wasm_cookies::get("auth_id").unwrap().unwrap();

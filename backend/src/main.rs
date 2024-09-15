@@ -1,3 +1,4 @@
+use std::thread::sleep;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use actix_cors::Cors;
@@ -26,10 +27,9 @@ use uuid::Uuid;
 
 use shared::user::Account;
 
-use crate::api::front::{retrieve_accounts, retrieve_auth_account, retrieve_whitelist, submit_comment, submit_ficherp, submit_ficherp_modif};
+use crate::api::front::{retrieve_accounts, retrieve_auth_account, retrieve_whitelist, submit_comment, submit_ficherp, submit_ficherp_admin, submit_ficherp_modif};
 use crate::api::oauth2::{auth, callback};
-use crate::api::webhook::{embed_webhook, text_webhook};
-use crate::utils::auth_utils::{renew_token, update_auth_id};
+use crate::utils::auth_utils::{renew_token, update_account_discord, update_auth_id};
 use crate::utils::config_utils::{Configuration, Oauth2Client};
 
 mod api;
@@ -53,7 +53,14 @@ pub struct RateLimitData {
 
 #[actix_web::main]
 async fn main() -> Result<()> {
+    const GIT_COMMIT: &str = env!("VERGEN_GIT_SHA");
+    const GIT_BRANCH: &str = env!("VERGEN_GIT_BRANCH");
+    const BUILD_TIMESTAMP: &str = env!("VERGEN_BUILD_TIMESTAMP");
+    const GIT_TAG: &str = env!("VERGEN_GIT_DESCRIBE"); // Access the tag
+
     env_logger::init_from_env(Env::default().default_filter_or("info"));
+
+    info!("Starting backend version {} on branch {} and compiled at {}", GIT_TAG, GIT_BRANCH, BUILD_TIMESTAMP);
 
     let dbclient: mongodb::Client = init_mongo().await;
 
@@ -65,7 +72,7 @@ async fn main() -> Result<()> {
     });
 
     update_token_thread(dbclient.clone()).await;
-
+    update_discord_user_thread(dbclient.clone(), app_data.reqwest_client.clone()).await;
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())  // Global middlewares
@@ -76,6 +83,13 @@ async fn main() -> Result<()> {
                 .allow_any_header()
                 .max_age(None)
             )
+            .service(retrieve_accounts)
+            .service(retrieve_auth_account)
+            .service(submit_ficherp)
+            .service(submit_ficherp_admin)
+            .service(submit_comment)
+            .service(submit_ficherp_modif)
+            .service(retrieve_whitelist)
             .wrap({
                 SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&[0; 64]))
                     .cookie_secure(false)
@@ -83,16 +97,8 @@ async fn main() -> Result<()> {
                     .build()
             })
             .wrap(Compress::default())
-            .service(text_webhook)
-            .service(embed_webhook)
             .service(auth)
             .service(callback)
-            .service(retrieve_accounts)
-            .service(retrieve_auth_account)
-            .service(submit_ficherp)
-            .service(submit_comment)
-            .service(submit_ficherp_modif)
-            .service(retrieve_whitelist)
             .service(Files::new("/", "dist").index_file("index.html"))
             .app_data(app_data.clone())
     })
@@ -108,7 +114,7 @@ pub async fn init_mongo() -> mongodb::Client {
     mongodb::Client::with_uri_str(uri).await.expect("[ERROR] Can't connect to mongodb server!")
 }
 
-pub async fn update_token_thread(dbclient: mongodb::Client) {
+async fn update_token_thread(dbclient: mongodb::Client) {
     actix_rt::spawn(async move {
         let mut interval = time::interval(Duration::from_secs(3600)); // check every hour (3600s)
         let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
@@ -132,13 +138,33 @@ pub async fn update_token_thread(dbclient: mongodb::Client) {
 
                 if time_passed_since_renew < 0 {
                     warn!("Can't renew token for {}({}) since it has expired", account.discord_user.global_name, account.discord_user.id);
-                    update_auth_id(&account.discord_user.id, &Uuid::now_v7().to_string(), dbclient).await;
-                    return;
-                }
-
-                if time_passed_since_renew <= 86400 { //renew when one day or less is left
+                    update_auth_id(&account.discord_user.id, &Uuid::now_v7().to_string(), dbclient.clone()).await;
+                } else if time_passed_since_renew <= 86400 { //renew when one day or less is left
                     renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
                     info!("Renewing token for {}({})", account.discord_user.global_name, account.discord_user.id);
+                }
+            }
+        }
+    });
+}
+
+async fn update_discord_user_thread(dbclient: mongodb::Client, http_client: reqwest::Client) {
+    actix_rt::spawn(async move {
+        let mut interval = time::interval(Duration::from_secs(3600)); // check every hour (3600s)
+        loop {
+            interval.tick().await;
+
+            let account_collection: Collection<Account> = dbclient.clone().database("visualis-website").collection("account");
+            let mut accounts_cursor: Cursor<Account> = account_collection.find(Document::new()).await.expect("Can't get all account");
+
+            while let Some(mut account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
+                let time_passed_since_renew: i64 = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) as i64 - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
+
+                if time_passed_since_renew < 0 {
+                    warn!("Can't refresh discord user for {}({}) since token has expired", account.discord_user.global_name, account.discord_user.id);
+                    update_auth_id(&account.discord_user.id, &Uuid::now_v7().to_string(), dbclient.clone()).await;
+                } else {
+                    update_account_discord(&account.auth_id, dbclient.clone(), &http_client).await;
                 }
             }
         }

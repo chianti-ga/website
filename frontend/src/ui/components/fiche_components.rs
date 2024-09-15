@@ -17,7 +17,7 @@ use shared::user::FrontAccount;
 
 use crate::app::AUTH_INFO;
 use crate::app::{get_string, image_resolver, AuthInfo};
-use crate::backend_handler::{post_ficherp, post_ficherp_modif};
+use crate::backend_handler::{post_ficherp, post_ficherp_admin, post_ficherp_modif};
 
 pub fn ficherp_bubble(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User) -> Response {
     let avatar_url = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, user.avatar);
@@ -130,17 +130,20 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, job_text_buffer: &mu
     });
 }
 
-pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mut bool, job_text_buffer: &mut String, is_editing_existing_fiche: &mut bool, background_image: &mut Option<String>) -> bool {
+pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mut bool, job_text_buffer: &mut String, is_editing_existing_fiche: &mut bool, background_image: &mut Option<String>, selected_account: &Option<FrontAccount>) -> bool {
     let mut can_be_closed: bool = false;
     let mut valid_entries: bool = false;
 
-    let binding: Arc<RwLock<AuthInfo>> = AUTH_INFO.clone();
-    let auth_lock: RwLockReadGuard<AuthInfo> = binding.read().unwrap();
-    let account = auth_lock.clone().account.unwrap();
-    let user: User = account.discord_user;
-    let avatar_url = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, &user.avatar);
+    let mut account = if let Some(selected_account) = selected_account {
+        selected_account.clone()
+    } else {
+        let auth_info = AUTH_INFO.read().unwrap();
+        auth_info.account.clone().unwrap_or_default()
+    };
 
-    let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
+    let user = account.discord_user;
+    let avatar_url = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", user.id, user.avatar);
+    let avatar_image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
 
     ficherp.submission_date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
@@ -346,12 +349,12 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
 
         ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
 
-        if ficherp.description.chars().count() > 15000 {
+        if ficherp.description.chars().count() > 300 {
             valid_entries = false;
-            ui.label(RichText::new("⚠ Trop long (>15 000 caractères)").strong().color(Color32::YELLOW));
-        } else if ficherp.description.chars().count() < 200 {
+            ui.label(RichText::new("⚠ Trop long (> 300 caractères)").strong().color(Color32::YELLOW));
+        } else if ficherp.description.chars().count() < 20 {
             valid_entries = false;
-            ui.label(RichText::new("⚠ Trop court... (< 200 cractères)").strong().color(Color32::YELLOW));
+            ui.label(RichText::new("⚠ Trop court... (< 20 caractères)").strong().color(Color32::YELLOW));
         } else {
             valid_entries = true;
         }
@@ -370,7 +373,7 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
             ui.label(RichText::new("⚠ Trop long (>15 000 caractères)").strong().color(Color32::YELLOW));
         } else if ficherp.lore.chars().count() < 200 {
             valid_entries = false;
-            ui.label(RichText::new("⚠ Trop court... (< 200 cractères)").strong().color(Color32::YELLOW));
+            ui.label(RichText::new("⚠ Trop court... (< 200 caractères)").strong().color(Color32::YELLOW));
         } else {
             valid_entries = true;
         }
@@ -421,7 +424,12 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                             submission_date: ficherp.submission_date.clone(),
                         });
 
-                        post_ficherp(ficherp);
+                        if let Some(selected_account) = selected_account {
+                            post_ficherp_admin(ficherp, selected_account);
+                        } else {
+                            post_ficherp(ficherp);
+                        }
+
                         *background_image = Option::from(image_resolver("checkmark_expo.svg"));
                         can_be_closed = true;
                     }
