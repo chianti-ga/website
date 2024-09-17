@@ -44,7 +44,7 @@ pub fn edit_comment_window(ui: &mut egui::Ui, ficherp_id: String, review_message
                                     } else if *role_lock == DiscordRole::Scenarist {
                                         ui.selectable_value(&mut review_message.set_state, FicheState::StaffValidated, FicheState::StaffValidated.get_text());
                                         ui.selectable_value(&mut review_message.set_state, FicheState::Refused, FicheState::Refused.get_text());
-                                    } else if *role_lock == DiscordRole::LeadScenarist {
+                                    } else if *role_lock == DiscordRole::LeadScenarist || *role_lock == DiscordRole::LeadMed {
                                         state_iter.filter(|state| state != &FicheState::Comment).for_each(|state| {
                                             ui.selectable_value(&mut review_message.set_state, state.clone(), state.get_text());
                                         });
