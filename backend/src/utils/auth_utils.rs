@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use log::info;
+use log::{error, info};
 use mongodb::bson::{doc, to_bson, Document};
 use mongodb::Collection;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
@@ -44,7 +44,10 @@ pub async fn update_token(auth_id: &str, discord_id: &String, token_response: Ba
             "last_renewal": to_bson(&time_now).unwrap(),
         }
     };
-    accounts.update_one(query, update_doc).await.expect("Failed to update account for token change");
+    match accounts.update_one(query, update_doc).await {
+        Ok(_) => info!("Updated token for account {}", discord_id),
+        Err(err) => error!("Failed to update token for account {}: \n{}", discord_id, err),
+    }
     update_account_discord(auth_id, client, reqwest_client).await;
 }
 
@@ -58,7 +61,14 @@ pub async fn update_auth_id(discord_id: &String, auth_id: &String, client: mongo
             "auth_id": to_bson(&auth_id).unwrap(),
         }
     };
-    accounts.update_one(query, update_doc).await.expect("Failed to update auth_id for account");
+    match accounts.update_one(query, update_doc).await {
+        Ok(_) => {
+            info!("auth_id updated for {}", discord_id);
+        }
+        Err(err) => {
+            error!("auth_id update for {} failed: {}", discord_id, err);
+        }
+    };
 }
 
 pub async fn update_account_discord(auth_id: &str, client: mongodb::Client, reqwest_client: &Client) {
@@ -76,7 +86,13 @@ pub async fn update_account_discord(auth_id: &str, client: mongodb::Client, reqw
         .send()
         .await.expect("Can't get token_response");
 
-    let authorization_information: DiscordAuthorizationInformation = response.json().await.expect("Can't parse authorization_information json");
+    let authorization_information: DiscordAuthorizationInformation = match response.json().await {
+        Ok(info) => info,
+        Err(e) => {
+            error!("Can't get DiscordAuthorizationInformation for id {}, error : {:?}", &account.discord_user.id,e);
+            return;
+        }
+    };
 
     let discord_guild_member_response: Response = reqwest_client
         .get("https://discord.com/api/users/@me/guilds/1031296063056924714/member")
@@ -94,8 +110,10 @@ pub async fn update_account_discord(auth_id: &str, client: mongodb::Client, reqw
             "discord_roles" : to_bson(&guild_member.roles).unwrap()
         }
     };
-    accounts.update_one(query, update_doc).await.expect("Failed to update account");
-    info!("Discord info updated for {}({})",authorization_information.user.global_name, authorization_information.user.id);
+    match accounts.update_one(query, update_doc).await {
+        Ok(_) => info!("Discord info updated for {}({})",authorization_information.user.global_name, authorization_information.user.id),
+        Err(err) => error!("Discord update for {}({}) failed: \n{}", authorization_information.user.global_name,authorization_information.user.id, err),
+    }
 }
 
 pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mongodb::Client, oauth_client: BasicClient) {
@@ -105,10 +123,17 @@ pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mo
     };
     let account: Account = accounts.find_one(query.clone()).await.expect("Can't find account to update").expect("Can't retrieve account document");
 
-    let token_result: BasicTokenResponse = oauth_client
+    let token_result: BasicTokenResponse = match oauth_client
         .exchange_refresh_token(renew_token)
         .request_async(async_http_client)
-        .await.expect("Can't renew token");
+        .await {
+        Ok(token) => token,
+        Err(e) => {
+            error!("Failed to renew token: {:?}", e);
+            return;
+        }
+    };
+
 
     let time_now: u64 = SystemTime::now().duration_since(UNIX_EPOCH).expect("invalid time").as_secs();
 
@@ -122,6 +147,9 @@ pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mo
         }
     };
 
-    accounts.update_one(query, update_doc).await.expect("Failed to update account for token change");
+    match accounts.update_one(query, update_doc).await {
+        Err(err) => error!("Can't update account oauth2 token {}: {}", auth_id, err),
+        _ => {}
+    }
     update_account_discord(&account.auth_id, client, &Client::new()).await;
 }

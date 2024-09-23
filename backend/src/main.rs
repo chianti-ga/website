@@ -134,14 +134,15 @@ async fn update_token_thread(dbclient: mongodb::Client) {
             let mut accounts_cursor: Cursor<Account> = account_collection.find(Document::new()).await.expect("Can't get all account");
 
             while let Some(mut account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
-                let time_passed_since_renew: i64 = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) as i64 - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
+                let time_passed_since_renew: i64 = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) as i64 - (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64);
 
-                if time_passed_since_renew < 0 {
+                if time_passed_since_renew <= 0 {
                     warn!("Can't renew token for {}({}) since it has expired", account.discord_user.global_name, account.discord_user.id);
                     update_auth_id(&account.discord_user.id, &Uuid::now_v7().to_string(), dbclient.clone()).await;
                 } else if time_passed_since_renew <= 86400 { //renew when one day or less is left
-                    renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
                     info!("Renewing token for {}({})", account.discord_user.global_name, account.discord_user.id);
+
+                    renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
                 }
             }
         }
@@ -158,9 +159,9 @@ async fn update_discord_user_thread(dbclient: mongodb::Client, http_client: reqw
             let mut accounts_cursor: Cursor<Account> = account_collection.find(Document::new()).await.expect("Can't get all account");
 
             while let Some(mut account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
-                let time_passed_since_renew: i64 = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) as i64 - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
+                let time_passed_since_renew: i64 = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) as i64 - (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64);
 
-                if time_passed_since_renew < 0 {
+                if time_passed_since_renew <= 0 {
                     warn!("Can't refresh discord user for {}({}) since token has expired", account.discord_user.global_name, account.discord_user.id);
                     update_auth_id(&account.discord_user.id, &Uuid::now_v7().to_string(), dbclient.clone()).await;
                 } else {
