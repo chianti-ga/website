@@ -134,7 +134,6 @@ pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mo
         }
     };
 
-
     let time_now: u64 = SystemTime::now().duration_since(UNIX_EPOCH).expect("invalid time").as_secs();
 
     let auth_id: String = Uuid::now_v7().to_string();

@@ -147,7 +147,6 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
 
     ficherp.submission_date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-
     ui.vertical(|ui| {
         ui.vertical_centered(|ui| {
             ui.label(format!("{} | Composition de votre Fiche RP", &user.global_name));

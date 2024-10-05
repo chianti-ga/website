@@ -120,7 +120,6 @@ pub async fn callback(callback_data: web::Query<OAuth2Callback>, session: Sessio
                 auth_cookie.set_same_site(SameSite::Strict);
                 auth_cookie.set_expires(OffsetDateTime::now_utc() + Duration::weeks(4));
 
-
                 update_token(&auth_id, &authorization_information.user.id, token_response.clone(), app_data.dbclient.clone(), &app_data.reqwest_client).await;
                 info!("Token updated for {}({})",authorization_information.user.global_name.clone(), authorization_information.user.id.clone());
 
