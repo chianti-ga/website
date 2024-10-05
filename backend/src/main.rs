@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
             .service(Files::new("/", "dist").index_file("index.html"))
             .app_data(app_data.clone())
     })
-        .bind(("127.0.0.1", CONFIG.port))
+        .bind((CONFIG.address.clone(), CONFIG.port))
         .map_err(anyhow::Error::msg)?
         .run()
         .await?;

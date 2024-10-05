@@ -98,12 +98,12 @@ pub fn ficherp_viewer(ui: &mut egui::Ui, ficherp: &FicheRP, job_text_buffer: &mu
         egui::ScrollArea::vertical().max_height(height).id_source("scoll_text_viewer").show(ui, |ui| {
             ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
 
-            CommonMarkViewer::new("desc_viewer").show(ui, &mut cache, &ficherp.description);
+            CommonMarkViewer::new().show(ui, &mut cache, &ficherp.description);
             ui.separator();
 
             ui.label(RichText::new("Lore : ").strong().text_style(TextStyle::Name("heading3".into())));
 
-            CommonMarkViewer::new("lore_viewer").show(ui, &mut cache, &ficherp.lore);
+            CommonMarkViewer::new().show(ui, &mut cache, &ficherp.lore);
         });
 
         ui.add_space(5.0);
@@ -340,9 +340,9 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
         /** SYNTAX HIGHLIGHT **/
 
         let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
-            let mut theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(ui.ctx());
+            let theme = egui_extras::syntax_highlighting::CodeTheme::from_memory(ui.ctx(), &Default::default());
             let mut layout_job =
-                egui_extras::syntax_highlighting::highlight(ui.ctx(), &theme, string, "markdown");
+                egui_extras::syntax_highlighting::highlight(ui.ctx(), &ui.ctx().style(), &theme, string, "markdown");
             layout_job.wrap.max_width = wrap_width;
             ui.fonts(|f| f.layout_job(layout_job))
         };
@@ -467,12 +467,12 @@ pub fn ficherp_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, user: &User, 
         egui::ScrollArea::vertical().id_source("scoll_text_viewer").show(ui, |ui| {
             ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
 
-            CommonMarkViewer::new("desc_viewer").show(ui, &mut cache, &ficherp.description);
+            CommonMarkViewer::new().show(ui, &mut cache, &ficherp.description);
             ui.separator();
 
             ui.label(RichText::new("Lore : ").strong().text_style(TextStyle::Name("heading3".into())));
 
-            CommonMarkViewer::new("lore_viewer").show(ui, &mut cache, &ficherp.lore);
+            CommonMarkViewer::new().show(ui, &mut cache, &ficherp.lore);
             ui.separator();
         });
     });
@@ -520,12 +520,12 @@ pub fn ficherp_history_viewer_window(ui: &mut egui::Ui, ficherp: &FicheRP, selec
         egui::ScrollArea::vertical().id_source("scoll_text_viewer").show(ui, |ui| {
             ui.label(RichText::new("Description physique : ").strong().text_style(TextStyle::Name("heading3".into())));
 
-            CommonMarkViewer::new("desc_viewer").show(ui, &mut cache, &selected_fiche_account_version.description);
+            CommonMarkViewer::new().show(ui, &mut cache, &selected_fiche_account_version.description);
             ui.separator();
 
             ui.label(RichText::new("Lore : ").strong().text_style(TextStyle::Name("heading3".into())));
 
-            CommonMarkViewer::new("lore_viewer").show(ui, &mut cache, &selected_fiche_account_version.lore);
+            CommonMarkViewer::new().show(ui, &mut cache, &selected_fiche_account_version.lore);
             ui.separator();
         });
     });

@@ -143,6 +143,7 @@ impl eframe::App for App {
                     show_resize: true,
                     show_interactive_widgets: true,
                     show_widget_hits: true,
+                    show_unaligned: true,
                 };
             });
         } else {
@@ -271,5 +272,6 @@ pub fn setup_debug_ui(style: &mut Style) {
         show_resize: true,
         show_interactive_widgets: true,
         show_widget_hits: true,
+        show_unaligned: false,
     };
 }

@@ -3,9 +3,11 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 #[derive(Clone)]
 pub struct Configuration {
+    pub address: String,
     pub port: u16,
     pub domain: String,
     pub scena_webhook: String,
+    pub bot_token: String,
     pub mongo_db_uri: String,
     pub oauth2client: Oauth2Client,
 }

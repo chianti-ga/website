@@ -5,27 +5,27 @@ edition = "2021"
 
 [dependencies]
 
-egui = { path = "../../egui/crates/egui", features = ["default", "color-hex"] }
-eframe = { path = "../../egui/crates/eframe", features = ["default"] }
-egui_extras = { path = "../../egui/crates/egui_extras", features = ["default", "image", "chrono", "all_loaders", "gif", "syntect"] }
+egui = { version = "0.29.1", features = ["default", "color-hex"] }
+eframe = { version = "0.29.1", features = ["default"] }
+egui_extras = { version = "0.29.1", features = ["default", "image", "chrono", "all_loaders", "gif", "syntect"] }
 
-egui_commonmark = { path = "../../egui_commonmark/egui_commonmark", features = ["default", "better_syntax_highlighting", "load-images", "svg"] }
+egui_commonmark = { version = "0.18.0", features = ["default", "better_syntax_highlighting", "load-images", "svg"] }
 ehttp = { version = "0.5.0", features = ["json"] }
 
-image = { version = "0.25.1", features = ["default"] }
-env_logger = "0.11.3"
+image = { version = "0.25.2", features = ["default"] }
+env_logger = "0.11.5"
 lazy_static = "1.4.0"
-log = "0.4.21"
-serde = "1.0.198"
-serde_json = "1.0.117"
+log = "0.4.22"
+serde = "1.0.210"
+serde_json = "1.0.128"
 json-gettext = "4.0.10"
 shared = { version = "0.1.0", path = "../shared" }
 chrono = "0.4.38"
 strum = { version = "0.26.3", features = ["derive"] }
 
 [build-dependencies]
-serde = "1.0.198"
-serde_json = "1.0.117"
+serde = "1.0.210"
+serde_json = "1.0.128"
 chrono = "0.4.38"
 
 # web:
@@ -33,9 +33,11 @@ chrono = "0.4.38"
 wasm-cookies = "0.2.1"
 getrandom = { version = "0.2", features = ["js"] }
 wasm-timer = "0.2.5"
-wasm-bindgen-futures = { version = "0.4.42" }
+wasm-bindgen = "0.2.93"
+wasm-bindgen-futures = { version = "0.4.43" }
 web-time = { version = "1.1.0", features = ["serde"] }
-web-sys = "0.3.69"
+web-sys = "0.3.70"
+
 
 [profile.release]
 lto = true
@@ -43,3 +45,6 @@ opt-level = 3
 
 [profile.dev]
 opt-level = 2 # fast and small wasm
+
+[profile.dev.package.egui_commonmark]
+opt-level = 3

@@ -59,7 +59,7 @@ impl eframe::App for FicheSpace {
         let auth_lock: RwLockReadGuard<AuthInfo> = auth_binding.read().unwrap();
         let user_account: FrontAccount = auth_lock.clone().account.unwrap();
 
-        let is_staff: bool = *user_role == DiscordRole::PlatformAdmin || *user_role == DiscordRole::Admin || *user_role == DiscordRole::LeadScenarist || *user_role == DiscordRole::Scenarist;
+        let is_staff: bool = *user_role == DiscordRole::PlatformAdmin || *user_role == DiscordRole::Admin || *user_role == DiscordRole::LeadScenarist || *user_role == DiscordRole::Scenarist || *user_role == DiscordRole::LeadMed;
 
         if self.is_previewing_fiche {
             egui::Window::new("Preview").open(&mut self.is_previewing_fiche).default_size([640.0, 960.0]).show(ctx, |ui| {
@@ -229,6 +229,7 @@ impl eframe::App for FicheSpace {
                         });
                     });
                 });
+
                 columns[2].with_layout(Layout::top_down(Align::Center), |ui| {
                     let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
                     if let Ok(all_account) = binding.read() {

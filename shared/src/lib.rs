@@ -12,6 +12,7 @@ mod tests {
     #[test]
     fn fiche_rp() {
         let fiche: FicheRP = FicheRP {
+            id: "".to_string(),
             name: "Roger".to_string(),
             job: Job::Science(ScienceRole::Researcher(ScienceRank::Senior)),
             description: "Je suis un grand garçon".to_string(),

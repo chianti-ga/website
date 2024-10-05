@@ -155,7 +155,7 @@ pub fn get_api_path() -> String {
 fn post_json(url: String, body: Vec<u8>) -> Request {
     Request {
         method: "POST".to_owned(),
-        url: url,
+        url,
         body,
         headers: Headers::new(&[
             ("Accept", "*/*"),
