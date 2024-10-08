@@ -31,10 +31,7 @@ RUN trunk build --release frontend/index.html
 RUN rm -r ./backend/ ./frontend/ ./shared/
 
 # Copy actual code and ressources
-COPY Cargo.toml ./Cargo.toml
-COPY backend/ ./backend
-COPY frontend/ ./frontend
-COPY shared/ ./shared
+COPY . .
 
 RUN cargo build --release --package=backend
 RUN trunk build --release frontend/index.html
