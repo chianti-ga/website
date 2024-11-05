@@ -176,7 +176,7 @@ pub fn is_rate_limited(
     auth_id: &str,
     max_requests: usize,
     time_window: Duration,
-    app_data: &web::Data<AppData>,
+    app_data: &Data<AppData>,
 ) -> bool {
     let mut rate_limit_data = app_data.rate_limit_map.entry(auth_id.to_string()).or_insert_with(|| RateLimitData {
         request_count: 0,

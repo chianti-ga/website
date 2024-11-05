@@ -84,6 +84,8 @@ impl App {
         style.text_styles.insert(TextStyle::Name("heading3".into()), FontId::new(14.0, Proportional));
         style.visuals.extreme_bg_color = hex_color!("#161616");
         style.spacing.scroll = ScrollStyle::solid();
+        style.url_in_tooltip = true;
+
         cc.egui_ctx.set_style(Arc::new(style));
 
         egui_extras::install_image_loaders(&cc.egui_ctx);

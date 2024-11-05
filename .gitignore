@@ -96,3 +96,4 @@ Cargo.lock
 
 /backend/data/*
 /frontend/build_info.json
+/backend/data/
