@@ -26,6 +26,8 @@ pub struct App {
     pub fiche_space: FicheSpace,
     pub space_panel: SpacePanel,
     pub admin_space: AdminSpace,
+    #[cfg(debug_assertions)]
+    pub debug_options: egui::style::DebugOptions,
 }
 #[derive(Clone)]
 pub struct AuthInfo {
@@ -126,6 +128,8 @@ impl App {
             },
 
             space_panel: SpacePanel::new(),
+            #[cfg(debug_assertions)]
+            debug_options: Default::default(),
         }
     }
 }
@@ -135,22 +139,20 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         #[cfg(debug_assertions)]
         if self.is_ui_debug {
-            ctx.style_mut(move |style| {
-                style.debug = egui::style::DebugOptions {
-                    debug_on_hover: true,
-                    debug_on_hover_with_all_modifiers: true,
-                    hover_shows_next: true,
-                    show_expand_width: true,
-                    show_expand_height: true,
-                    show_resize: true,
-                    show_interactive_widgets: true,
-                    show_widget_hits: true,
-                    show_unaligned: true,
-                };
+            egui::Window::new("Debug").open(&mut self.is_ui_debug).default_size([640.0, 960.0]).show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    ui.toggle_value(&mut self.debug_options.debug_on_hover, "debug_on_hover");
+                    ui.toggle_value(&mut self.debug_options.debug_on_hover_with_all_modifiers, "debug_on_hover_with_all_modifiers");
+                    ui.toggle_value(&mut self.debug_options.hover_shows_next, "hover_shows_next");
+                    ui.toggle_value(&mut self.debug_options.show_expand_width, "show_expand_width");
+                    ui.toggle_value(&mut self.debug_options.show_resize, "show_resize");
+                    ui.toggle_value(&mut self.debug_options.show_interactive_widgets, "show_interactive_widgets");
+                    ui.toggle_value(&mut self.debug_options.show_widget_hits, "show_widget_hits");
+                    ui.toggle_value(&mut self.debug_options.show_unaligned, "show_unaligned");
+                });
             });
-        } else {
-            ctx.style_mut(move |style| {
-                style.debug = egui::style::DebugOptions::default()
+            ctx.style_mut(|style| {
+                style.debug = self.debug_options.clone()
             });
         }
 
