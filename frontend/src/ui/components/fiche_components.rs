@@ -243,7 +243,7 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                 egui::ComboBox::from_id_source("role_combo").selected_text(ficherp.job.get_science_role().unwrap().to_string()).show_ui(ui, |ui| {
                     ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Scientifique");
                     ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceRank::Beginner)), "Chercheur");
-                    //ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceLevel::Beginner)), role.to_string());
+                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceRank::Beginner)), "Superviseur");
                 });
                 let rank: String = ficherp.job.clone().get_science_level().unwrap().to_string();
                 ui.label("Rang");
@@ -260,6 +260,11 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                                     ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceRank::Beginner)), "Junior");
                                     ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceRank::NoLevel)), "Confirmé");
                                     ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Researcher(ScienceRank::Senior)), "Senior");
+                                }
+                                ScienceRole::Supervisor(_) => {
+                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceRank::Beginner)), "Junior");
+                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceRank::NoLevel)), "Confirmé");
+                                    ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceRank::Senior)), "Senior");
                                 }
                                 _ => {}
                             }
