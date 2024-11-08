@@ -48,3 +48,5 @@ opt-level = 2 # fast and small wasm
 
 [profile.dev.package.egui_commonmark]
 opt-level = 3
+[profile.dev.package.egui_extras]
+opt-level = 3
