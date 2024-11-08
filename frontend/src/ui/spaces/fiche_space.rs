@@ -42,7 +42,7 @@ impl fmt::Display for FilterEnum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FilterEnum::OWN => write!(f, "Mes Fiches"),
-            FilterEnum::ALL => write!(f, "Mode staff"),
+            FilterEnum::ALL => write!(f, "Toutes"),
             FilterEnum::ACCEPTED_OTHER => write!(f, "Fiches des autres"),
             FilterEnum::WAITING => write!(f, "En attente"),
         }
@@ -154,10 +154,13 @@ impl eframe::App for FicheSpace {
                         ui.label(get_string("ficherp.filter.own_fiche"));
 
                         egui::ComboBox::from_id_source("role_combo").selected_text(self.fiche_filter.to_string()).show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.fiche_filter, FilterEnum::ACCEPTED_OTHER, FilterEnum::ACCEPTED_OTHER.to_string());
-                            ui.selectable_value(&mut self.fiche_filter, FilterEnum::OWN, FilterEnum::OWN.to_string());
                             if is_staff {
+                                ui.selectable_value(&mut self.fiche_filter, FilterEnum::ALL, FilterEnum::ALL.to_string());
                                 ui.selectable_value(&mut self.fiche_filter, FilterEnum::WAITING, FilterEnum::WAITING.to_string());
+                                ui.selectable_value(&mut self.fiche_filter, FilterEnum::ACCEPTED_OTHER, "Acceptée");
+                            } else {
+                                ui.selectable_value(&mut self.fiche_filter, FilterEnum::ACCEPTED_OTHER, FilterEnum::ACCEPTED_OTHER.to_string());
+                                ui.selectable_value(&mut self.fiche_filter, FilterEnum::OWN, FilterEnum::OWN.to_string());
                             }
                         });
                     });
@@ -168,37 +171,33 @@ impl eframe::App for FicheSpace {
                             ui.vertical(|ui| {
                                 all_account.iter().for_each(|account| {
                                     ui.vertical(|ui| {
-                                        &account.fiches.iter().filter(|ficherp| {
-                                            if !account.fiches.is_empty() && is_staff {
-                                                true
-                                            } else {
-                                                match self.fiche_filter {
-                                                    FilterEnum::OWN => account.discord_user == user_account.discord_user,
-                                                    FilterEnum::ALL => true,
-                                                    FilterEnum::ACCEPTED_OTHER => ficherp.state == FicheState::Accepted,
-                                                    FilterEnum::WAITING => ficherp.state == FicheState::Waiting
-                                                }
-                                            }
-                                        }).for_each(|ficherp| {
-                                            ui.add_space(5.0);
+                                        // Set filter based on conditions
+                                        if !account.fiches.is_empty() && is_staff && self.fiche_filter == FilterEnum::OWN {
+                                            self.fiche_filter = FilterEnum::ALL;
+                                        }
 
+                                        account.fiches.iter().filter(|ficherp| match self.fiche_filter {
+                                            FilterEnum::OWN => account.discord_user == user_account.discord_user,
+                                            FilterEnum::ACCEPTED_OTHER => ficherp.state == FicheState::Accepted,
+                                            FilterEnum::WAITING => ficherp.state == FicheState::Waiting,
+                                            FilterEnum::ALL => true,
+                                        }).for_each(|ficherp| {
                                             let account_ref: &FrontAccount = account;
                                             let ficherp_ref: &FicheRP = ficherp;
+
                                             frame.show(ui, |ui| {
                                                 let bubble_rec = ficherp_bubble(ui, ficherp_ref, &account_ref.discord_user);
-
                                                 let response = ui.allocate_rect(bubble_rec.rect, Sense::click());
 
                                                 if response.on_hover_cursor(CursorIcon::PointingHand).clicked() {
                                                     self.new_fiche = None;
                                                     self.selected_fiche_account = Some((account_ref.clone(), ficherp_ref.clone()));
                                                     self.selected_fiche_version = None;
-
                                                     self.is_viewing_fiche_history = false;
                                                     self.is_writing_message = false;
                                                     self.is_previewing_fiche = false;
                                                     self.background_image = None;
-                                                };
+                                                }
                                             });
                                         });
                                     });
