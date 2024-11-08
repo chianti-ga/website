@@ -136,18 +136,15 @@ pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mo
 
     let time_now: u64 = SystemTime::now().duration_since(UNIX_EPOCH).expect("invalid time").as_secs();
 
-    let auth_id: String = Uuid::now_v7().to_string();
-
     let update_doc = doc! {
         "$set": {
             "token": to_bson(&token_result).unwrap(),
             "last_renewal": to_bson(&time_now).unwrap(),
-            "auth_id": to_bson(&auth_id).unwrap()
         }
     };
 
     match accounts.update_one(query, update_doc).await {
-        Err(err) => error!("Can't update account oauth2 token {}: {}", auth_id, err),
+        Err(err) => error!("Can't update account oauth2 token id:{}: {}", &account.discord_user.id, err),
         _ => {}
     }
     update_account_discord(&account.auth_id, client, &Client::new()).await;
