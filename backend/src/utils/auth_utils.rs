@@ -1,3 +1,5 @@
+use std::fs;
+use std::io::BufReader;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::{error, info};
@@ -6,11 +8,12 @@ use mongodb::Collection;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::reqwest::async_http_client;
 use oauth2::{RefreshToken, TokenResponse};
+use octocrab::Error::Encoder;
 use reqwest::{Client, Response};
 use serde_json::Value;
 use uuid::Uuid;
 
-use shared::discord::{DiscordAuthorizationInformation, GuildMember};
+use shared::discord::{DiscordAuthorizationInformation, GuildMember, User};
 use shared::user::Account;
 
 use crate::CONFIG;
@@ -104,12 +107,38 @@ pub async fn update_account_discord(auth_id: &str, client: mongodb::Client, reqw
         roles: vec![],
     });
 
-    let update_doc = doc! {
+    let update_doc: Document = doc! {
         "$set": {
             "discord_user": to_bson(&authorization_information.user).unwrap(),
             "discord_roles" : to_bson(&guild_member.roles).unwrap()
         }
     };
+
+    let user: &User = &authorization_information.user;
+
+    if account.discord_user.avatar != user.avatar {
+        let avatar_url: String = format!("https://cdn.discordapp.com/avatars/{}/{}.webp?size=128", user.id, user.avatar);
+
+        let avatar_response: Response = reqwest_client.get(&avatar_url).send().await.expect("Can't get avatar");
+
+        match avatar_response.bytes().await {
+            Ok(bytes) => {
+                match fs::create_dir_all(format!("data/cache/avatars/{}", user.id)) {
+                    Ok(_) => {
+                        match fs::write(format!("data/cache/avatars/{}/image.webp", user.id), bytes) {
+                            Ok(_) => info!("Updated avatar for user {}", user.id),
+                            Err(err) => error!("Failed to update avatar for user {}: {}", user.id, err)
+                        }
+                    }
+                    Err(err) => error!("Can't create user id avatars directory: {}", err),
+                }
+            }
+            Err(err) => {
+                error!("Can't get avatar for user {}: {}", user.id, &err);
+            }
+        }
+    }
+
     match accounts.update_one(query, update_doc).await {
         Ok(_) => info!("Discord info updated for {}({})",authorization_information.user.global_name, authorization_information.user.id),
         Err(err) => error!("Discord update for {}({}) failed: \n{}", authorization_information.user.global_name,authorization_information.user.id, err),
@@ -136,18 +165,15 @@ pub async fn renew_token(old_token: &str, renew_token: &RefreshToken, client: mo
 
     let time_now: u64 = SystemTime::now().duration_since(UNIX_EPOCH).expect("invalid time").as_secs();
 
-    let auth_id: String = Uuid::now_v7().to_string();
-
-    let update_doc = doc! {
+    let update_doc: Document = doc! {
         "$set": {
             "token": to_bson(&token_result).unwrap(),
             "last_renewal": to_bson(&time_now).unwrap(),
-            "auth_id": to_bson(&auth_id).unwrap()
         }
     };
 
     match accounts.update_one(query, update_doc).await {
-        Err(err) => error!("Can't update account oauth2 token {}: {}", auth_id, err),
+        Err(err) => error!("Can't update account oauth2 token id:{}: {}", &account.discord_user.id, err),
         _ => {}
     }
     update_account_discord(&account.auth_id, client, &Client::new()).await;

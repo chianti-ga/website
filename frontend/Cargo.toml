@@ -23,11 +23,6 @@ shared = { version = "0.1.0", path = "../shared" }
 chrono = "0.4.38"
 strum = { version = "0.26.3", features = ["derive"] }
 
-[build-dependencies]
-serde = "1.0.210"
-serde_json = "1.0.128"
-chrono = "0.4.38"
-
 # web:
 [target.wasm32-unknown-unknown.dependencies]
 wasm-cookies = "0.2.1"
@@ -47,4 +42,10 @@ opt-level = 3
 opt-level = 2 # fast and small wasm
 
 [profile.dev.package.egui_commonmark]
+opt-level = 3
+[profile.dev.package.egui]
+opt-level = 3
+[profile.dev.package.eframe]
+opt-level = 3
+[profile.dev.package.egui_extras]
 opt-level = 3

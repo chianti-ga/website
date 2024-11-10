@@ -19,10 +19,8 @@ env:
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
 
-
 jobs:
   build:
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -59,7 +57,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Extract metadata (tags, labels) for Docker
+      # Extract Docker metadata (tags, labels)
       # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
         id: meta
@@ -67,7 +65,16 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      # Build and push Docker image with Buildx (don't push on PR)
+      # Set build arguments (for passing metadata to Docker build)
+      - name: Set build arguments
+        id: build-args
+        run: |
+          echo "BUILD_TIMESTAMP=$(date +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+          echo "GIT_BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
+          echo "GIT_COMMIT=${{ github.sha }}" >> $GITHUB_ENV
+          echo "GIT_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+
+      # Build and push Docker image (don't push on PR)
       # https://github.com/docker/build-push-action
       - name: Build and push Docker image
         id: build-and-push
@@ -77,10 +84,15 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_TIMESTAMP=${{ env.BUILD_TIMESTAMP }}
+            GIT_BRANCH=${{ env.GIT_BRANCH }}
+            GIT_COMMIT=${{ env.GIT_COMMIT }}
+            GIT_TAG=${{ env.GIT_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Sign the resulting Docker image digest except on PRs.
+      # Sign the published Docker image except on PRs.
       # This will only write to the public Rekor transparency log when the Docker
       # repository is public to avoid leaking data.  If you would like to publish
       # transparency data even for private images, pass --force to cosign below.
@@ -88,7 +100,6 @@ jobs:
       - name: Sign the published Docker image
         if: ${{ github.event_name != 'pull_request' }}
         env:
-          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
           TAGS: ${{ steps.meta.outputs.tags }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
         # This step uses the identity token to provision an ephemeral certificate

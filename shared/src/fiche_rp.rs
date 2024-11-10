@@ -175,6 +175,7 @@ impl Display for ScienceRank {
 #[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
 pub enum SecurityRole {
     SecurityOfficier(SecurityRank),
+    Ntf(SecurityRank),
     Gunsmith(SecurityRank),
     TacticalAgent(SecurityRank),
 }
@@ -185,6 +186,7 @@ impl SecurityRole {
             SecurityRole::SecurityOfficier(level) => level,
             SecurityRole::TacticalAgent(level) => level,
             SecurityRole::Gunsmith(level) => level,
+            SecurityRole::Ntf(level) => level
         };
     }
 }
@@ -192,6 +194,7 @@ impl Display for SecurityRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             SecurityRole::SecurityOfficier(level) => write!(f, "Officier de Sécurité ({})", level),
+            SecurityRole::Ntf(level) => write!(f, "Nine-Tailed Fox ({})", level),
             SecurityRole::TacticalAgent(level) => write!(f, "Agent Tactique ({})", level),
             SecurityRole::Gunsmith(level) => write!(f, "Armurier ({})", level)
         }
