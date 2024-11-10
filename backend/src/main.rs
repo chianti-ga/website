@@ -1,3 +1,4 @@
+use std::fs::create_dir_all;
 use std::thread::sleep;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -62,6 +63,11 @@ async fn main() -> Result<()> {
 
     info!("Starting backend version {} on branch {} and compiled at {}", GIT_TAG, GIT_BRANCH, BUILD_TIMESTAMP);
 
+    match create_dir_all("data/cache/avatars") {
+        Ok(_) => info!("Created cache folder for avatars"),
+        Err(err) => error!("Can't create cache folder for avatars :{}",err)
+    }
+
     let dbclient: mongodb::Client = init_mongo().await;
 
     let app_data = Data::new(AppData {
@@ -71,8 +77,7 @@ async fn main() -> Result<()> {
         rate_limit_map: Default::default(),
     });
 
-    update_token_thread(dbclient.clone()).await;
-    update_discord_user_thread(dbclient.clone(), app_data.reqwest_client.clone()).await;
+    update_token_thread(dbclient.clone(), app_data.reqwest_client.clone()).await;
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())  // Global middlewares
@@ -99,6 +104,7 @@ async fn main() -> Result<()> {
             .wrap(Compress::default())
             .service(auth)
             .service(callback)
+            .service(Files::new("/api/cache/avatars", "data/cache/avatars").index_file("index.html"))
             .service(Files::new("/", "dist").index_file("index.html"))
             .app_data(app_data.clone())
     })
@@ -114,7 +120,7 @@ pub async fn init_mongo() -> mongodb::Client {
     mongodb::Client::with_uri_str(uri).await.expect("[ERROR] Can't connect to mongodb server!")
 }
 
-async fn update_token_thread(dbclient: mongodb::Client) {
+async fn update_token_thread(dbclient: mongodb::Client, http_client: reqwest::Client) {
     actix_rt::spawn(async move {
         let mut interval = time::interval(Duration::from_secs(3600)); // check every hour (3600s)
         let oauth2_info: &Oauth2Client = &CONFIG.oauth2client.clone();
@@ -141,29 +147,7 @@ async fn update_token_thread(dbclient: mongodb::Client) {
                     update_auth_id(&account.discord_user.id, &Uuid::now_v7().to_string(), dbclient.clone()).await;
                 } else if time_passed_since_renew <= 86400 { //renew when one day or less is left
                     info!("Renewing token for {}({})", account.discord_user.global_name, account.discord_user.id);
-
                     renew_token(account.token.access_token().secret(), account.token.refresh_token().unwrap(), dbclient.clone(), oauth_client.clone()).await;
-                }
-            }
-        }
-    });
-}
-
-async fn update_discord_user_thread(dbclient: mongodb::Client, http_client: reqwest::Client) {
-    actix_rt::spawn(async move {
-        let mut interval = time::interval(Duration::from_secs(3600)); // check every hour (3600s)
-        loop {
-            interval.tick().await;
-
-            let account_collection: Collection<Account> = dbclient.clone().database("visualis-website").collection("account");
-            let mut accounts_cursor: Cursor<Account> = account_collection.find(Document::new()).await.expect("Can't get all account");
-
-            while let Some(mut account) = accounts_cursor.try_next().await.expect("Can't iterate over collection") {
-                let time_passed_since_renew: i64 = (account.last_renewal + account.token.expires_in().unwrap().as_secs()) as i64 - (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64);
-
-                if time_passed_since_renew <= 0 {
-                    warn!("Can't refresh discord user for {}({}) since token has expired", account.discord_user.global_name, account.discord_user.id);
-                    update_auth_id(&account.discord_user.id, &Uuid::now_v7().to_string(), dbclient.clone()).await;
                 } else {
                     update_account_discord(&account.auth_id, dbclient.clone(), &http_client).await;
                 }

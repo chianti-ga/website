@@ -1,7 +1,7 @@
 use std::future::IntoFuture;
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, TryLockResult};
 
-use crate::backend_handler::{authenticate, get_oath2_url};
+use crate::backend_handler::{authenticate, get_api_path, get_oath2_url};
 use crate::ui::select_space::SpacePanel;
 use crate::ui::spaces::admin_space::AdminSpace;
 use crate::ui::spaces::fiche_space::{FicheSpace, FilterEnum};
@@ -243,6 +243,14 @@ pub fn get_string(query: &str) -> String {
         None => query.to_string(),
         Some(text) => text.to_string()
     }
+}
+
+pub fn avatar_resolver(user_id: &str) -> String {
+    let mut path: String = get_api_path();
+    path.push_str("api/cache/avatars/");
+    path.push_str(user_id);
+    path.push_str("/image.webp");
+    path
 }
 
 pub fn image_resolver(image_name: &str) -> String {

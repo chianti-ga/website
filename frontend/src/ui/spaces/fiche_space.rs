@@ -169,6 +169,7 @@ impl eframe::App for FicheSpace {
                         let binding: Arc<RwLock<Vec<FrontAccount>>> = ALL_ACCOUNTS.clone();
                         if let Ok(all_account) = binding.read() {
                             ui.vertical(|ui| {
+                                ui.add_space(10.0);
                                 all_account.iter().for_each(|account| {
                                     ui.vertical(|ui| {
                                         // Set filter based on conditions
@@ -254,7 +255,6 @@ impl eframe::App for FicheSpace {
                                     egui::ScrollArea::vertical().show(ui, |ui| {
                                         selected_fiche_account.1.messages.iter().for_each(|review_message: &ReviewMessage| {
                                             if !review_message.is_private || (review_message.is_private && is_staff) {
-                                                ui.add_space(10.0);
                                                 frame.show(ui, |ui| {
                                                     comment_bubble(ui, &review_message, self.common_mark_cache.clone())
                                                 });
