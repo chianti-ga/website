@@ -43,7 +43,10 @@ RUN rm -r ./backend/ ./frontend/ ./shared/
 COPY . .
 
 RUN cargo build --release --package=backend
-RUN trunk build --release frontend/index.html
+WORKDIR /srv/frontend
+RUN trunk build --release
+
+WORKDIR /srv
 
 #FINAL
 FROM gcr.io/distroless/cc-debian12
