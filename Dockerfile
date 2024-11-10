@@ -1,5 +1,24 @@
 FROM rust:1.80.1-slim-bookworm as build
 
+ARG BUILD_TIMESTAMP
+ARG GIT_BRANCH
+ARG GIT_COMMIT
+ARG GIT_TAG
+
+# Set environment variables for runtime use
+ENV BUILD_TIMESTAMP=$BUILD_TIMESTAMP
+ENV GIT_BRANCH=$GIT_BRANCH
+ENV GIT_COMMIT=$GIT_COMMIT
+ENV GIT_TAG=$GIT_TAG
+
+# Create the build_info.json file with the build information
+RUN echo '{
+    "BUILD_TIMESTAMP": "$BUILD_TIMESTAMP",
+    "GIT_BRANCH": "$GIT_BRANCH",
+    "GIT_COMMIT": "$GIT_COMMIT",
+    "GIT_TAG": "$GIT_TAG"
+}' > /build_info.json
+
 WORKDIR /srv
 
 RUN apt-get update && apt-get install -y build-essential gcc libssl-dev pkg-config

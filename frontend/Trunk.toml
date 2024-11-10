@@ -2,4 +2,4 @@
 # Paths to watch. The `build.target`'s parent folder is watched by default.
 watch = []
 # Paths to ignore.
-ignore = ["build_info.json", "src/main.rs"]
+ignore = ["src/main.rs"]

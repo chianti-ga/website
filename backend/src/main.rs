@@ -54,14 +54,14 @@ pub struct RateLimitData {
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    const GIT_COMMIT: &str = env!("VERGEN_GIT_SHA");
-    const GIT_BRANCH: &str = env!("VERGEN_GIT_BRANCH");
-    const BUILD_TIMESTAMP: &str = env!("VERGEN_BUILD_TIMESTAMP");
-    const GIT_TAG: &str = env!("VERGEN_GIT_DESCRIBE"); // Access the tag
+    const GIT_COMMIT: Option<&str> = option_env!("GIT_COMMIT");
+    const GIT_BRANCH: Option<&str> = option_env!("GIT_BRANCH");
+    const BUILD_TIMESTAMP: Option<&str> = option_env!("BUILD_TIMESTAMP");
+    const GIT_TAG: Option<&str> = option_env!("GIT_TAG");
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    info!("Starting backend version {} on branch {} and compiled at {}", GIT_TAG, GIT_BRANCH, BUILD_TIMESTAMP);
+    info!("Starting backend version {} on branch {} and compiled at {}", GIT_TAG.unwrap_or_else(|| "unknown"), GIT_BRANCH.unwrap_or_else(|| "unknown"), BUILD_TIMESTAMP.unwrap_or_else(|| "unknown"));
 
     match create_dir_all("data/cache/avatars") {
         Ok(_) => info!("Created cache folder for avatars"),

@@ -5,7 +5,7 @@ use crate::backend_handler::{authenticate, get_api_path, get_oath2_url};
 use crate::ui::select_space::SpacePanel;
 use crate::ui::spaces::admin_space::AdminSpace;
 use crate::ui::spaces::fiche_space::{FicheSpace, FilterEnum};
-use crate::BUILD_INFO;
+use crate::GIT_TAG;
 use eframe::egui;
 use eframe::egui::{Style, TextStyle};
 use egui::style::ScrollStyle;
@@ -265,7 +265,7 @@ pub fn image_resolver(image_name: &str) -> String {
 fn footer(ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.label("© Project Visualis 2024");
-        ui.label(&BUILD_INFO.git_tag);
+        ui.label(GIT_TAG.unwrap_or_else(|| "unknown"));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add(Hyperlink::from_label_and_url("Conditions Générales d'Utilisation", "cgu.html").open_in_new_tab(true));
             ui.add(Hyperlink::from_label_and_url("Politique de Confidentialité", "privacy.html").open_in_new_tab(true));

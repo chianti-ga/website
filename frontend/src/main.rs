@@ -8,20 +8,11 @@ mod app;
 mod backend_handler;
 mod ui;
 
-#[derive(Deserialize, Debug)]
-struct BuildInfo {
-    git_commit: String,
-    git_branch: String,
-    build_timestamp: String,
-    git_tag: String,
-}
+const GIT_COMMIT: Option<&str> = option_env!("GIT_COMMIT");
+const GIT_BRANCH: Option<&str> = option_env!("GIT_BRANCH");
+const BUILD_TIMESTAMP: Option<&str> = option_env!("BUILD_TIMESTAMP");
+const GIT_TAG: Option<&str> = option_env!("GIT_TAG");
 
-lazy_static! {
-    static ref BUILD_INFO: BuildInfo = {
-        let json_str:&str = include_str!(concat!("../build_info.json"));
-        serde_json::from_str(json_str).expect("Failed to parse build_info.json")
-    };
-}
 
 // When compiling to web using trunk:
 #[cfg(target_arch = "wasm32")]
@@ -61,7 +52,7 @@ fn main() {
             match start_result {
                 Ok(_) => {
                     loading_text.remove();
-                    info!("Runing frontend version {} on branch {} and compiled at {}", BUILD_INFO.git_tag, BUILD_INFO.git_branch, BUILD_INFO.build_timestamp);
+                    info!("Runing frontend version {} on branch {} and compiled at {}", GIT_TAG.unwrap_or_else(|| "unknown"), GIT_BRANCH.unwrap_or_else(|| "unknown"), BUILD_TIMESTAMP.unwrap_or_else(|| "unknown"));
                 }
                 Err(e) => {
                     loading_text.set_inner_html(
