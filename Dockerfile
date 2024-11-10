@@ -27,8 +27,6 @@ RUN cargo new --bin shared
 COPY Cargo.toml ./Cargo.toml
 COPY backend/Cargo.toml ./backend/Cargo.toml
 COPY frontend/Cargo.toml ./frontend/Cargo.toml
-COPY backend/build.rs ./backend/build.rs
-COPY frontend/build.rs ./frontend/build.rs
 
 COPY frontend/index.html ./frontend/index.html
 COPY frontend/assets ./frontend/assets
