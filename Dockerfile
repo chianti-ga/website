@@ -34,7 +34,10 @@ COPY shared/Cargo.toml ./shared/Cargo.toml
 
 # build steps will cache your dependencies
 RUN cargo build --release --package=backend
-RUN trunk build --release frontend/index.html
+WORKDIR /srv/frontend
+RUN trunk build --release
+WORKDIR /srv
+
 
 # Remove sample file from cargo new
 RUN rm -r ./backend/ ./frontend/ ./shared/
