@@ -11,14 +11,6 @@ ENV GIT_BRANCH=$GIT_BRANCH
 ENV GIT_COMMIT=$GIT_COMMIT
 ENV GIT_TAG=$GIT_TAG
 
-# Create the build_info.json file with the build information
-RUN echo '{
-    "BUILD_TIMESTAMP": "$BUILD_TIMESTAMP",
-    "GIT_BRANCH": "$GIT_BRANCH",
-    "GIT_COMMIT": "$GIT_COMMIT",
-    "GIT_TAG": "$GIT_TAG"
-}' > /build_info.json
-
 WORKDIR /srv
 
 RUN apt-get update && apt-get install -y build-essential gcc libssl-dev pkg-config
@@ -35,8 +27,6 @@ RUN cargo new --bin shared
 COPY Cargo.toml ./Cargo.toml
 COPY backend/Cargo.toml ./backend/Cargo.toml
 COPY frontend/Cargo.toml ./frontend/Cargo.toml
-COPY backend/build.rs ./backend/build.rs
-COPY frontend/build.rs ./frontend/build.rs
 
 COPY frontend/index.html ./frontend/index.html
 COPY frontend/assets ./frontend/assets
@@ -44,7 +34,10 @@ COPY shared/Cargo.toml ./shared/Cargo.toml
 
 # build steps will cache your dependencies
 RUN cargo build --release --package=backend
-RUN trunk build --release frontend/index.html
+WORKDIR /srv/frontend
+RUN trunk build --release
+WORKDIR /srv
+
 
 # Remove sample file from cargo new
 RUN rm -r ./backend/ ./frontend/ ./shared/
@@ -53,7 +46,10 @@ RUN rm -r ./backend/ ./frontend/ ./shared/
 COPY . .
 
 RUN cargo build --release --package=backend
-RUN trunk build --release frontend/index.html
+WORKDIR /srv/frontend
+RUN trunk build --release
+
+WORKDIR /srv
 
 #FINAL
 FROM gcr.io/distroless/cc-debian12
