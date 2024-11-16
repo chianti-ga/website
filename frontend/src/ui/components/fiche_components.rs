@@ -12,7 +12,7 @@ use strum::IntoEnumIterator;
 use web_time::{SystemTime, UNIX_EPOCH};
 
 use shared::discord::User;
-use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, MedicRank, MedicRole, ScienceRank, ScienceRole, SecurityRank, SecurityRole};
+use shared::fiche_rp::{FicheRP, FicheState, FicheVersion, Job, MedicRank, MedicRole, MtfRole, ScienceRank, ScienceRole, SecurityRank, SecurityRole};
 use shared::user::FrontAccount;
 
 use crate::app::{avatar_resolver, AUTH_INFO};
@@ -194,6 +194,7 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                 ui.selectable_value(&mut ficherp.job, Job::ClassD, Job::ClassD.to_string());
                 ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
                 ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Scientific(ScienceRank::Beginner)), "Science");
+                ui.selectable_value(&mut ficherp.job, Job::Mtf(MtfRole::Omega10(SecurityRank::Rct)), "FIM");
                 ui.selectable_value(&mut ficherp.job, Job::Medic(MedicRole::Doctor(MedicRank::Beginner)), "Médecine");
                 ui.selectable_value(&mut ficherp.job, Job::Chaos, Job::Chaos.to_string());
                 ui.selectable_value(&mut ficherp.job, Job::Other("".to_string()), "Autres");
@@ -205,7 +206,6 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                 ui.label("Role");
                 egui::ComboBox::from_id_source("role_combo").selected_text(role_string).show_ui(ui, |ui| {
                     ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::SecurityOfficier(SecurityRank::Rct)), "Officier de Sécurité");
-                    ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::Ntf(SecurityRank::Rct)), "Nine-Tailed Fox");
                     ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::Gunsmith(SecurityRank::Rct)), "Armurier");
                 });
 
@@ -228,13 +228,6 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                                         let mut level_string = level.to_string();
                                         level_string = truncate_at_char_boundary(level_string, 20);
                                         ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::Gunsmith(level.clone())), level_string);
-                                    }
-                                }
-                                SecurityRole::Ntf(_) => {
-                                    for level in SecurityRank::iter() {
-                                        let mut level_string = level.to_string();
-                                        level_string = truncate_at_char_boundary(level_string, 20);
-                                        ui.selectable_value(&mut ficherp.job, Job::Security(SecurityRole::Ntf(level.clone())), level_string);
                                     }
                                 }
                                 _ => {}
@@ -273,6 +266,37 @@ pub fn ficherp_edit(ui: &mut egui::Ui, ficherp: &mut FicheRP, is_previewing: &mu
                                     ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceRank::NoLevel)), "Confirmé");
                                     ui.selectable_value(&mut ficherp.job, Job::Science(ScienceRole::Supervisor(ScienceRank::Senior)), "Senior");
                                 }
+                                _ => {}
+                            }
+                        }
+                        _ => {}
+                    }
+                });
+            }
+
+            if ficherp.job.to_string().contains("FIM") {
+                let mut role_string: String = ficherp.job.get_mtf_role().unwrap().to_string();
+                role_string = truncate_at_char_boundary(role_string, 20);
+                ui.label("Role");
+                egui::ComboBox::from_id_source("role_combo").selected_text(role_string).show_ui(ui, |ui| {
+                    ui.selectable_value(&mut ficherp.job, Job::Mtf(MtfRole::Omega10(SecurityRank::Rct)), "Omega - 10");
+                });
+
+                let mut level: String = ficherp.job.clone().get_mtf_role().unwrap().to_string();
+                level = truncate_at_char_boundary(level, 20);
+                ui.label("Rang");
+                egui::ComboBox::from_id_source("rang_combo").selected_text(&level).show_ui(ui, |ui| {
+                    match &ficherp.job {
+                        Job::Mtf(role) => {
+                            match role {
+                                MtfRole::Omega10(_) => {
+                                    for level in SecurityRank::iter() {
+                                        let mut level_string = level.to_string();
+                                        level_string = truncate_at_char_boundary(level_string, 10);
+                                        ui.selectable_value(&mut ficherp.job, Job::Mtf(MtfRole::Omega10(level.clone())), level_string);
+                                    }
+                                }
+
                                 _ => {}
                             }
                         }

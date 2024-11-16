@@ -65,6 +65,7 @@ pub enum Job {
     Science(ScienceRole),
     ClassD,
     Medic(MedicRole),
+    Mtf(MtfRole),
     SiteDirector,
     Chaos,
     Other(String),
@@ -79,6 +80,12 @@ impl Job {
     pub fn get_security_role(&self) -> Option<&SecurityRole> {
         match self {
             Job::Security(role) => Option::from(role),
+            _ => None
+        }
+    }
+    pub fn get_mtf_role(&self) -> Option<&MtfRole> {
+        match self {
+            Job::Mtf(role) => Option::from(role),
             _ => None
         }
     }
@@ -126,6 +133,7 @@ impl Display for Job {
             Job::SiteDirector => write!(f, "Directeur du Site"),
             Job::Chaos => write!(f, "Chaos"),
             Job::Other(string) => write!(f, "Autres ({})", string),
+            Job::Mtf(role) => write!(f, "FIM ({})", role)
         }
     }
 }
@@ -175,7 +183,6 @@ impl Display for ScienceRank {
 #[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
 pub enum SecurityRole {
     SecurityOfficier(SecurityRank),
-    Ntf(SecurityRank),
     Gunsmith(SecurityRank),
     TacticalAgent(SecurityRank),
 }
@@ -186,7 +193,6 @@ impl SecurityRole {
             SecurityRole::SecurityOfficier(level) => level,
             SecurityRole::TacticalAgent(level) => level,
             SecurityRole::Gunsmith(level) => level,
-            SecurityRole::Ntf(level) => level
         };
     }
 }
@@ -194,7 +200,6 @@ impl Display for SecurityRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             SecurityRole::SecurityOfficier(level) => write!(f, "Officier de Sécurité ({})", level),
-            SecurityRole::Ntf(level) => write!(f, "Nine-Tailed Fox ({})", level),
             SecurityRole::TacticalAgent(level) => write!(f, "Agent Tactique ({})", level),
             SecurityRole::Gunsmith(level) => write!(f, "Armurier ({})", level)
         }
@@ -296,6 +301,26 @@ impl Display for MedicRank {
             MedicRank::Beginner => write!(f, "Junior"),
             MedicRank::Confirmed => write!(f, "Confirmé"),
             MedicRank::Senior => write!(f, "Sénior")
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
+pub enum MtfRole {
+    Omega10(SecurityRank),
+}
+
+impl MtfRole {
+    fn get_security_level(&self) -> &SecurityRank {
+        return match self {
+            MtfRole::Omega10(rank) => rank,
+        };
+    }
+}
+impl Display for MtfRole {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MtfRole::Omega10(rank) => write!(f, "{} Omega - 10", rank)
         }
     }
 }

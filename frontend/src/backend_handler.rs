@@ -49,7 +49,6 @@ pub fn retrieve_accounts() {
 
     ehttp::fetch(request, |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
-        debug!("{}", &result.text().unwrap());
         if result.status == 200 {
             let accounts: Vec<FrontAccount> = result.clone().json().unwrap();
             match ALL_ACCOUNTS.clone().write() {
@@ -69,7 +68,6 @@ pub fn retrieve_whitelist() {
 
     ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
-        debug!("{}", &result.text().unwrap());
         if result.status == 200 {
             let whitelist: WebsiteMeta = result.clone().json().unwrap();
             match AUTH_INFO.clone().write() {
@@ -89,7 +87,6 @@ pub fn post_ficherp(ficherp: &FicheRP) {
 
     ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
-        debug!("{}", &result.text().unwrap());
 
         if result.status == 200 {
             authenticate();
@@ -103,7 +100,6 @@ pub fn post_ficherp_admin(ficherp: &FicheRP, target_account: &FrontAccount) {
 
     ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
-        debug!("{}", &result.text().unwrap());
 
         if result.status == 200 {
             authenticate();
@@ -118,7 +114,6 @@ pub fn post_ficherp_modif(ficherp: &FicheRP) {
 
     ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
         let mut result = result.unwrap();
-        debug!("{}", &result.text().unwrap());
 
         if result.status == 200 {
             authenticate();
