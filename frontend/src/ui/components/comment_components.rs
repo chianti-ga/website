@@ -15,7 +15,7 @@ use shared::fiche_rp::{FicheRP, FicheState, FicheStateIter, ReviewMessage};
 use shared::permissions::DiscordRole;
 use shared::user::FrontAccount;
 
-use crate::app::{AuthInfo, ALL_ACCOUNTS, AUTH_INFO, SELECTED_ROLE};
+use crate::app::{avatar_resolver, AuthInfo, ALL_ACCOUNTS, AUTH_INFO, SELECTED_ROLE};
 use crate::backend_handler::post_comment;
 use crate::ui::components::fiche_components::state_badge;
 
@@ -95,7 +95,7 @@ pub fn comment_bubble(ui: &mut egui::Ui, review_message: &ReviewMessage, cache: 
     let binding = ALL_ACCOUNTS.read().unwrap();
     let account: &FrontAccount = binding.iter().find(|front_account| front_account.discord_user.id == review_message.discord_id).unwrap();
     let user: &User = &account.discord_user;
-    let avatar_url: String = format!("https://cdn.discordapp.com/avatars/{}/{}.png?size=128", &user.id, user.avatar);
+    let avatar_url = avatar_resolver(&user.id);
 
     let avatar_image: Image = Image::new(avatar_url).fit_to_original_size(0.5).maintain_aspect_ratio(true).rounding(100.0);
     let datetime = Utc.from_utc_datetime(&NaiveDateTime::from_timestamp(review_message.date as i64, 0));
