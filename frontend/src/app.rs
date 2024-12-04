@@ -10,7 +10,7 @@ use eframe::egui;
 use eframe::egui::{Style, TextStyle};
 use egui::style::ScrollStyle;
 use egui::FontFamily::Proportional;
-use egui::{hex_color, Align, Button, Color32, FontId, Hyperlink, Image, Layout, RichText};
+use egui::{hex_color, Align, Button, Color32, FontId, Hyperlink, Image, Layout, RichText, Visuals};
 use egui_commonmark::CommonMarkCache;
 use json_gettext::{get_text, static_json_gettext_build, JSONGetText};
 use lazy_static::lazy_static;
@@ -80,6 +80,7 @@ impl App {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
         let mut style: Style = Style::default();
+
         style.visuals.override_text_color.insert(Color32::from_hex("#B8B8B8").unwrap());
 
         style.text_styles.insert(TextStyle::Name("heading2".into()), FontId::new(16.0, Proportional));
@@ -88,6 +89,7 @@ impl App {
         style.spacing.scroll = ScrollStyle::solid();
         style.url_in_tooltip = true;
 
+        cc.egui_ctx.set_visuals(Visuals::dark());
         cc.egui_ctx.set_style(Arc::new(style));
 
         egui_extras::install_image_loaders(&cc.egui_ctx);

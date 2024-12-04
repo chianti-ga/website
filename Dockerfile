@@ -1,4 +1,4 @@
-FROM rust:1.80.1-slim-bookworm as build
+FROM rust:1.83.0-slim-bookworm as build
 
 ARG BUILD_TIMESTAMP
 ARG GIT_BRANCH
