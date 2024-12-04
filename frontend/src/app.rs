@@ -10,7 +10,7 @@ use eframe::egui;
 use eframe::egui::{Style, TextStyle};
 use egui::style::ScrollStyle;
 use egui::FontFamily::Proportional;
-use egui::{hex_color, Align, Button, Color32, FontId, Hyperlink, Image, Layout, RichText};
+use egui::{hex_color, Align, Button, Color32, FontId, Hyperlink, Image, Layout, RichText, Theme, Visuals};
 use egui_commonmark::CommonMarkCache;
 use json_gettext::{get_text, static_json_gettext_build, JSONGetText};
 use lazy_static::lazy_static;
@@ -84,9 +84,12 @@ impl App {
 
         style.text_styles.insert(TextStyle::Name("heading2".into()), FontId::new(16.0, Proportional));
         style.text_styles.insert(TextStyle::Name("heading3".into()), FontId::new(14.0, Proportional));
+
         style.visuals.extreme_bg_color = hex_color!("#161616");
         style.spacing.scroll = ScrollStyle::solid();
         style.url_in_tooltip = true;
+
+        cc.egui_ctx.set_theme(Theme::Dark);
 
         cc.egui_ctx.set_style(Arc::new(style));
 
